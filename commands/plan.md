@@ -119,10 +119,14 @@ Step N [Tier] (~Xk tokens): [Title]
 
 ## Phase 3: Persist to todo.md
 
-Create `./todo.md`:
+Create `./todo.md` with the **overall objective and analysis summary at the very top** so every execution run can realign before acting:
 
 ```markdown
 # TODO - [Task Name]
+
+## 🎯 Objective Snapshot
+- Goal: [Single sentence restatement of the overall task]
+- Key Findings: [Top 2-3 insights from analysis that must stay visible]
 
 ## 🔍 Analysis
 - Complexity: [Tier] (~XXk tokens)

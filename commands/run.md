@@ -8,11 +8,12 @@ Execute current task with intelligent complexity reassessment and adaptive expan
 ## Phase 0: Locate Work Item
 
 1. Read `./todo.md`, find [▶️] marker
-2. Capture:
+2. Immediately sync the state store with this active step (and active substep if one is marked) before making any decisions
+3. Capture:
    - Tier (Trivial/Simple/Complex)
    - Title and estimated tokens
    - Notes, risks, dependencies
-3. Understand user's $ARGUMENTS if provided
+4. Understand user's $ARGUMENTS if provided
 
 ## Phase 1: Reassess Complexity
 
@@ -24,7 +25,7 @@ Execute current task with intelligent complexity reassessment and adaptive expan
 3. Evaluate actual changes needed vs estimated
 4. Consider new information discovered since planning
 
-**Complexity Adjustment**:
+**Complexity Adjustment** (after confirming the state store reflects the latest [▶️] marker):
 - **Planned tier overestimated?**
   - Example: "Complex" step but only needs single file change
   - → Downgrade to Simple/Trivial, execute directly
@@ -54,7 +55,7 @@ Complex:  Multiple components/modules/services → Consider expansion
 - Skip expansion overhead
 
 ### For Complex Steps:
-**Evaluate if substeps are truly needed**:
+**Evaluate if substeps are truly needed** only after the refreshed state confirms the active step:
 
 ❌ **DON'T expand if**:
 - Work is sequential but straightforward
@@ -144,7 +145,7 @@ Completeness (0-10):   All requirements covered, outputs complete
 
 ## Phase 5: Auto-Transition
 
-Update todo.md based on completion:
+Update todo.md based on completion, then refresh the state store to reflect the new active position before giving guidance:
 
 **Trivial/Simple Step Complete**:
 ```
@@ -152,6 +153,8 @@ Update todo.md based on completion:
 ⚡ AUTO-TRANSITION: Now on Step N+1 [Tier]
 💡 Recommend: /clear then /run
 ```
+
+Sync the state store with the new active step before prompting for the next action.
 
 **Substep Complete**:
 ```
@@ -161,6 +164,8 @@ Update todo.md based on completion:
 💡 Recommend: /clear then /run
 ```
 
+Persist the active substep index in the state store so re-entries resume in the right place.
+
 **All Substeps Complete**:
 ```
 🎉 Step N [Complex] Complete! All substeps done.
@@ -168,6 +173,8 @@ Update todo.md based on completion:
 ⚡ AUTO-TRANSITION: Now on Step N+1
 💡 Recommend: /clear then /run
 ```
+
+Immediately write the next active step into both todo.md and the state store to keep progression deterministic.
 
 **For Trivial tasks with no more work**:
 ```
