@@ -1,6 +1,7 @@
 ---
 description: Dual Design - Parallel design with merge
 argument-hint: <design-type> <context>
+allowed-tools: Read, Glob, Grep, Bash, Task, Skill, WebSearch, WebFetch, AskUserQuestion
 ---
 
 Run the Dual Design workflow (Claude + Codex independent design, then merge).

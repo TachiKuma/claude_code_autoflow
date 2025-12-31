@@ -1,6 +1,7 @@
 ---
 description: Mode Switch - Switch between plan/bypass modes
 argument-hint: [mode]
+allowed-tools: Read, Glob, Grep, Bash, Task, Skill, WebSearch, WebFetch, AskUserQuestion
 ---
 
 Switch Claude between plan/bypass modes as needed.

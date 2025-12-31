@@ -1,6 +1,7 @@
 ---
 description: AutoFlow FileOps - Delegate file I/O to Codex
 argument-hint: <FileOpsREQ JSON>
+allowed-tools: Read, Glob, Grep, Bash, Task, Skill, WebSearch, WebFetch, AskUserQuestion
 ---
 
 Send a FileOpsREQ JSON request to Codex for execution and return a FileOpsRES response.

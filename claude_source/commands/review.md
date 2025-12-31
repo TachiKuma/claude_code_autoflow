@@ -1,6 +1,7 @@
 ---
 description: Review - Dual review with Claude and Codex
 argument-hint: <mode> [context]
+allowed-tools: Read, Glob, Grep, Bash, Task, Skill, WebSearch, WebFetch, AskUserQuestion
 ---
 
 Run the unified review workflow for either a step or the full task.

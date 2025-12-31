@@ -1,6 +1,7 @@
 ---
 description: AutoFlow Run - Execute current step
 argument-hint: [optional details]
+allowed-tools: Read, Glob, Grep, Bash, Task, Skill, WebSearch, WebFetch, AskUserQuestion
 ---
 
 Execute the AutoFlow Run workflow for the current step.

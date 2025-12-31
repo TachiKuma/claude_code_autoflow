@@ -1,6 +1,7 @@
 ---
 description: AutoFlow Plan - Create task plan with dual design
 argument-hint: <requirement>
+allowed-tools: Read, Glob, Grep, Bash, Task, Skill, WebSearch, WebFetch, AskUserQuestion
 ---
 
 Execute the AutoFlow Plan workflow.
