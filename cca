@@ -14,9 +14,9 @@ CCA_CACHE="${CCA_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/cca}"
 CCA_INSTALL_PREFIX="${CCA_INSTALL_PREFIX:-$HOME/.local/share/cca}"
 CCA_BIN_DIR="${CCA_BIN_DIR:-$HOME/.local/bin}"
 
-CCA_REPO_GIT="https://github.com/bfly123/claude-autoflow.git"
+CCA_REPO_GIT="https://github.com/bfly123/claude_code_autoflow.git"
 CCA_REPO_URL="${CCA_REPO_GIT%.git}"
-CCA_REPO_API="https://api.github.com/repos/bfly123/claude-autoflow/commits/main"
+CCA_REPO_API="https://api.github.com/repos/bfly123/claude_code_autoflow/commits/main"
 INSTALLATIONS_FILE="$CCA_HOME/installations"
 
 resolve_script_path() {
@@ -537,7 +537,7 @@ cmd_update() {
 
                 tar -xzf "$tarball_path" -C "$tmp_dir"
 
-                extracted_dir="$tmp_dir/claude-autoflow-main"
+                extracted_dir="$tmp_dir/claude_code_autoflow-main"
                 if [[ ! -d "$extracted_dir" ]]; then
                     extracted_dir="$(find "$tmp_dir" -maxdepth 1 -type d -name '*-main' -print -quit 2>/dev/null || true)"
                 fi

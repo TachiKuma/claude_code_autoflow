@@ -7,7 +7,7 @@ BIN_DIR="${CCA_BIN_DIR:-$HOME/.local/bin}"
 
 # GitHub repo (for version injection fallback).
 REPO_OWNER="bfly123"
-REPO_NAME="claude-autoflow"
+REPO_NAME="claude_code_autoflow"
 
 readonly REPO_ROOT INSTALL_PREFIX BIN_DIR REPO_OWNER REPO_NAME
 
