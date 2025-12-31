@@ -54,10 +54,14 @@ if [[ "$1" == "--uninstall" ]]; then
         fi
     done
 
-    # Remove config
-    if [[ -d "$HOME/.cct" ]]; then
-        rm -rf "$HOME/.cct"
-        log_info "Removed: $HOME/.cct"
+    # Remove config/cache (XDG-style)
+    if [[ -d "${XDG_CONFIG_HOME:-$HOME/.config}/cct" ]]; then
+        rm -rf "${XDG_CONFIG_HOME:-$HOME/.config}/cct"
+        log_info "Removed: ${XDG_CONFIG_HOME:-$HOME/.config}/cct"
+    fi
+    if [[ -d "${XDG_CACHE_HOME:-$HOME/.cache}/cct" ]]; then
+        rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}/cct"
+        log_info "Removed: ${XDG_CACHE_HOME:-$HOME/.cache}/cct"
     fi
 
     log_info "Done!"
@@ -101,9 +105,10 @@ cp "$SCRIPT_DIR/cct" "$BIN_DIR/cct"
 chmod +x "$BIN_DIR/cct"
 log_info "Installed: $BIN_DIR/cct"
 
-# Create config directory
-CCT_HOME="$HOME/.cct"
-mkdir -p "$CCT_HOME"
+# Create config/cache directories (XDG-style)
+CCT_HOME="${XDG_CONFIG_HOME:-$HOME/.config}/cct"
+CCT_CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/cct"
+mkdir -p "$CCT_HOME" "$CCT_CACHE"
 
 # Save source path
 echo "$SCRIPT_DIR" > "$CCT_HOME/source_path"
@@ -125,7 +130,8 @@ fi
 cat > "$BIN_DIR/cct" << EOF
 #!/bin/bash
 export CCT_SOURCE="$SCRIPT_DIR"
-export CCT_HOME="\${CCT_HOME:-\$HOME/.cct}"
+export CCT_HOME="\${CCT_HOME:-\${XDG_CONFIG_HOME:-\$HOME/.config}/cct}"
+export CCT_CACHE="\${CCT_CACHE:-\${XDG_CACHE_HOME:-\$HOME/.cache}/cct}"
 exec "$SCRIPT_DIR/cct" "\$@"
 EOF
 chmod +x "$BIN_DIR/cct"

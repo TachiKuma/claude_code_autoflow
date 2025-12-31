@@ -6,10 +6,23 @@ set -euo pipefail
 shopt -s nullglob
 
 VERSION="1.0.0"
-CCT_HOME="${CCT_HOME:-$HOME/.cct}"
-CCT_SOURCE="${CCT_SOURCE:-$HOME/yunwei/claude_triflows}"
+CCT_HOME="${CCT_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/cct}"
+CCT_CACHE="${CCT_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/cct}"
 CCT_REPO="https://github.com/bfly123/claude-triflow.git"
 INSTALLATIONS_FILE="$CCT_HOME/installations"
+SOURCE_PATH_FILE="$CCT_HOME/source_path"
+
+# Resolve default source path:
+# - env CCT_SOURCE (if set)
+# - ~/.config/cct/source_path (if present)
+# - directory containing this script (for development installs)
+CCT_SOURCE="${CCT_SOURCE:-}"
+if [[ -z "${CCT_SOURCE:-}" ]] && [[ -f "$SOURCE_PATH_FILE" ]]; then
+    CCT_SOURCE="$(cat "$SOURCE_PATH_FILE" 2>/dev/null || true)"
+fi
+if [[ -z "${CCT_SOURCE:-}" ]]; then
+    CCT_SOURCE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+fi
 
 # Colors
 RED='\033[0;31m'
@@ -18,8 +31,8 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-# Ensure CCT_HOME exists
-mkdir -p "$CCT_HOME"
+# Ensure CCT_HOME and cache exist
+mkdir -p "$CCT_HOME" "$CCT_CACHE"
 touch "$INSTALLATIONS_FILE"
 
 usage() {
@@ -445,7 +458,7 @@ cmd_update() {
         log_blue "Fetching latest from GitHub..."
         command -v git >/dev/null 2>&1 || { log_error "git not found (required for 'cct update'; use 'cct update --local' as a fallback)"; exit 1; }
 
-        local repo_dir="$CCT_HOME/repo"
+        local repo_dir="$CCT_CACHE/repo"
         if [[ -d "$repo_dir/.git" ]]; then
             git -C "$repo_dir" pull --ff-only
         else
