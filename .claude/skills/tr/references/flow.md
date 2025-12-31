@@ -2,8 +2,8 @@
 
 Execute current step while Claude stays in plan mode and Codex performs all file I/O.
 
-**File formats**: See `../../docs/formats.md`
-**Protocol**: See `../../docs/protocol.md`
+**File formats**: See `~/.claude/skills/docs/formats.md`
+**Protocol**: See `~/.claude/skills/docs/protocol.md`
 
 ---
 
@@ -66,7 +66,7 @@ Then go to Step 8 (Finalize) and output the split result (no execution performed
 ### 4. Build Step FileOpsREQ (Execution)
 
 Based on merged approach:
-- Build `FileOpsREQ` JSON (see `../docs/protocol.md`)
+- Build `FileOpsREQ` JSON (see `~/.claude/skills/docs/protocol.md`)
 - Include agreed done conditions
 - Note identified risks
 
@@ -155,7 +155,7 @@ If PASS (execution path), ask Codex to:
 Send `FileOpsREQ` with `purpose: "finalize_step"` via `/file-op`. Codex returns `FileOpsRES` JSON only.
 
 Auto-loop requirement (reliable next-step trigger):
-- After finalizing, Codex must run the auto-loop trigger (see `autoflow_auto_loop` in `../docs/protocol.md`; implemented as an explicit `run` op).
+- After finalizing, Codex must run the auto-loop trigger (see `autoflow_auto_loop` in `~/.claude/skills/docs/protocol.md`; implemented as an explicit `run` op).
 - If there are remaining steps, it must trigger the next `/tr` automatically using `lask`.
 - It must be executed via the FileOpsREQ protocol (no manual copy/paste).
 

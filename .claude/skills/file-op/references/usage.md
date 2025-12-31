@@ -2,7 +2,7 @@
 
 Claude stays in **plan mode**. This command delegates **all repo file I/O** to Codex using the `FileOpsREQ` / `FileOpsRES` JSON protocol.
 
-**Protocol**: See `../../docs/protocol.md`
+**Protocol**: See `~/.claude/skills/docs/protocol.md`
 
 ---
 

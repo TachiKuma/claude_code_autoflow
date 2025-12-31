@@ -2,8 +2,8 @@
 
 Create executable plan artifacts: `todo.md` + `state.json` + `plan_log.md`
 
-**File formats**: See `../../docs/formats.md`
-**Protocol**: See `../../docs/protocol.md`
+**File formats**: See `~/.claude/skills/docs/formats.md`
+**Protocol**: See `~/.claude/skills/docs/protocol.md`
 
 ---
 
