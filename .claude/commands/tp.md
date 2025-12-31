@@ -6,8 +6,8 @@ argument-hint: <requirement>
 Execute the AutoFlow Plan workflow.
 
 Read and follow:
-- `.claude/skills/tp/SKILL.md`
-- `.claude/skills/tp/references/flow.md`
+- `~/.claude/skills/tp/SKILL.md`
+- `~/.claude/skills/tp/references/flow.md`
 
 Input: `$ARGUMENTS` (the requirement to plan)
 
