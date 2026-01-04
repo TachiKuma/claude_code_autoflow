@@ -2,7 +2,7 @@
 
 ![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
 ![License](https://img.shields.io/badge/license-AGPL--3.0-green.svg)
-![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20WSL-lightgrey.svg)
+![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows%20%7C%20WSL-lightgrey.svg)
 
 **Claude Code AutoFlow (cca)** is a structured task automation workflow system designed for AI-assisted development. It enables Claude to plan and execute complex tasks autonomously with dual-design validation.
 
@@ -56,6 +56,25 @@ ccb update cca         # Install/update CCA only
 git clone https://github.com/bfly123/claude_code_autoflow.git
 cd claude_code_autoflow
 ./install.sh install
+```
+
+### Windows (PowerShell)
+
+**Prerequisites**: PowerShell 5.1+ (Windows 10+)
+
+**Installation**:
+```powershell
+git clone https://github.com/bfly123/claude_code_autoflow.git
+cd claude_code_autoflow
+# Copy cca.ps1 to your PATH or run directly
+Copy-Item cca.ps1 $env:LOCALAPPDATA\Microsoft\WindowsApps\cca.ps1
+```
+
+**Usage**:
+```powershell
+cca.ps1 <command> [options]
+# Or if in PATH:
+cca <command> [options]
 ```
 
 ## 📖 Usage
