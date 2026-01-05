@@ -59,6 +59,7 @@ Codex executes a list of explicit operations (`ops`) and returns `FileOpsRES`.
 | constraints.no_network | bool | false | Disallow network access |
 | constraints.writable_roots | string[] | ["."] | Allowed write paths |
 | constraints.max_attempts | int | 2 | Max retry attempts |
+| constraints.executor | string | "codex" | Execution engine: "codex" (default) or "opencode" (Codex supervises OpenCode via oask) |
 
 ### ops[] Validation
 

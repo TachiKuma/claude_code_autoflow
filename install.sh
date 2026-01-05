@@ -164,12 +164,12 @@ install_global_skills() {
   local target="$HOME/.claude"
   mkdir -p "$target/skills" "$target/commands"
 
-  for skill in tr tp dual-design file-op ask-codex review mode-switch docs; do
+  for skill in tr tp dual-design file-op ask-codex ask-gemini review mode-switch docs; do
     rm -rf "$target/skills/$skill" 2>/dev/null || true
     cp -a "$INSTALL_PREFIX/claude_source/skills/$skill" "$target/skills/"
   done
 
-  for cmd in tr.md tp.md dual-design.md file-op.md ask-codex.md review.md mode-switch.md; do
+  for cmd in tr.md tp.md dual-design.md file-op.md ask-codex.md ask-gemini.md review.md mode-switch.md; do
     cp -a "$INSTALL_PREFIX/claude_source/commands/$cmd" "$target/commands/"
   done
 

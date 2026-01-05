@@ -62,8 +62,8 @@ $CCA_SOURCE = if ($env:CCA_SOURCE) { $env:CCA_SOURCE } else { $CCA_SCRIPT_ROOT }
 $INSTALLATIONS_FILE = Join-PathSafe $CCA_HOME 'installations.csv'
 $LEGACY_INSTALLATIONS_FILE = Join-PathSafe $CCA_HOME 'installations'
 
-$AUTOFLOW_SKILLS = @('tr', 'tp', 'dual-design', 'file-op', 'ask-codex', 'review', 'mode-switch', 'docs')
-$AUTOFLOW_COMMANDS = @('tr.md', 'tp.md', 'dual-design.md', 'file-op.md', 'ask-codex.md', 'review.md', 'mode-switch.md', 'auto.md')
+$AUTOFLOW_SKILLS = @('tr', 'tp', 'dual-design', 'file-op', 'ask-codex', 'ask-gemini', 'review', 'mode-switch', 'docs')
+$AUTOFLOW_COMMANDS = @('tr.md', 'tp.md', 'dual-design.md', 'file-op.md', 'ask-codex.md', 'ask-gemini.md', 'review.md', 'mode-switch.md', 'auto.md')
 
 function Write-Info { param([string]$Message) Write-Host ("[+] {0}" -f $Message) -ForegroundColor Green }
 function Write-Warn { param([string]$Message) Write-Host ("[!] {0}" -f $Message) -ForegroundColor Yellow }
@@ -123,6 +123,47 @@ function ConvertFrom-LegacyInstallationsIfNeeded {
 
     $csvLines = $records | Select-Object Path, Type, InstallDate | ConvertTo-Csv -NoTypeInformation
     Write-AllLinesUtf8NoBom -Path $INSTALLATIONS_FILE -Lines $csvLines
+}
+
+function Ensure-SystemRolesConfig {
+    $rolesPath = Join-PathSafe $CCA_HOME 'roles.json'
+    if (Test-Path -LiteralPath $rolesPath) { return }
+    $content = @"
+{
+  "schemaVersion": 1,
+  "enabled": true,
+  "executor": "codex",
+  "reviewer": "codex",
+  "documenter": "codex",
+  "designer": ["claude", "codex"]
+}
+"@
+    try {
+        Write-AllTextUtf8NoBom -Path $rolesPath -Text $content
+        Write-Info ("Created system roles config: {0}" -f $rolesPath)
+    } catch { }
+}
+
+function Ensure-ProjectRolesConfig {
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+    $targetDir = Join-PathSafe $ProjectRoot '.autoflow'
+    $targetFile = Join-PathSafe $targetDir 'roles.json'
+    if (Test-Path -LiteralPath $targetFile) {
+        Write-Warn ("Project roles config already exists: {0}" -f $targetFile)
+        return
+    }
+    try { New-Item -ItemType Directory -Path $targetDir -Force | Out-Null } catch { }
+    $template = Join-PathSafe $CCA_SOURCE 'claude_source\templates\roles.json'
+    if (Test-Path -LiteralPath $template) {
+        try {
+            Copy-Item -LiteralPath $template -Destination $targetFile -Force
+            Write-Info ("Installed project roles config: {0}" -f $targetFile)
+        } catch {
+            Write-Warn ("Failed to install project roles config: {0}" -f $targetFile)
+        }
+    } else {
+        Write-Warn ("Roles template not found (skipping): {0}" -f $template)
+    }
 }
 
 function Show-Usage {
@@ -611,6 +652,8 @@ function Cmd-Add {
         $p = Get-CanonicalDirectoryPath -Path '.'
         Write-Blue ("Configuring current project: {0}" -f $p)
         Invoke-Install -Path $p -Type 'project'
+        Ensure-SystemRolesConfig
+        Ensure-ProjectRolesConfig -ProjectRoot $p
     } else {
         $candidate = Expand-UserPath -Path $Target
         if (-not [System.IO.Path]::IsPathRooted($candidate)) {
@@ -619,6 +662,8 @@ function Cmd-Add {
         $p = Get-CanonicalDirectoryPath -Path $candidate
         Write-Blue ("Configuring: {0}" -f $p)
         Invoke-Install -Path $p -Type 'project'
+        Ensure-SystemRolesConfig
+        Ensure-ProjectRolesConfig -ProjectRoot $p
     }
 
     Write-Host ''

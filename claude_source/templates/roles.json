@@ -1,0 +1,20 @@
+{
+  "_meta": {
+    "notes": [
+      "P1: executor 允许切换为 opencode；当 executor=opencode 时，由 Codex 通过 oask 指导 OpenCode 执行，并由 Codex 负责审查/迭代控制。",
+      "P0 仍支持 reviewer/documenter/designer 的切换；若 enabled=false 或 schemaVersion!=1，将回退默认配置。"
+    ],
+    "allowedValues": {
+      "executor": ["codex", "opencode"],
+      "reviewer": ["codex", "gemini"],
+      "documenter": ["codex", "gemini"],
+      "designer": ["claude", "codex", "gemini"]
+    }
+  },
+  "schemaVersion": 1,
+  "enabled": true,
+  "executor": "codex",
+  "reviewer": "codex",
+  "documenter": "gemini",
+  "designer": ["claude", "codex"]
+}

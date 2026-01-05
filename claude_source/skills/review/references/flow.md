@@ -1,6 +1,6 @@
 # Review
 
-Dual review by Claude (initial assessment) and Codex (cross-review).
+Dual review by Claude (initial assessment) and a configurable cross-review provider (Codex by default).
 
 ## Modes
 
@@ -18,6 +18,34 @@ Dual review by Claude (initial assessment) and Codex (cross-review).
 
 ## Execution Flow
 
+### 0. Resolve Cross-Review Provider (Roles Config)
+
+Read roles config (project overrides system):
+
+1) `<repo>/.autoflow/roles.json` (if exists)
+2) `~/.config/cca/roles.json` (if exists)
+3) Fallback defaults
+
+Minimal schema (P0):
+```json
+{
+  "schemaVersion": 1,
+  "enabled": true,
+  "executor": "codex",
+  "reviewer": "codex|gemini",
+  "documenter": "codex|gemini",
+  "designer": ["claude", "codex|gemini"]
+}
+```
+
+Rules:
+- If `enabled != true` → ignore config (use defaults)
+- If `schemaVersion != 1` → ignore config (use defaults)
+- `executor` is out-of-scope in P0 and must remain `codex` (ignore if different)
+- Cross-review provider = `reviewer` (allowed: `codex`, `gemini`), else default to `codex`
+
+Implementation detail: Claude must not read repo files directly; request file reads via `/file-op` (`read_file`) and parse the JSON response.
+
 ### 1. Claude Initial Assessment
 
 Evaluate against done conditions / acceptance criteria:
@@ -27,10 +55,14 @@ Evaluate against done conditions / acceptance criteria:
 
 Preliminary verdict: **PASS** / **FIX** / **UNCERTAIN**
 
-### 2. Codex Cross-Review
+### 2. Cross-Review (Provider)
+
+If provider is:
+- `codex` → use `/ask-codex`
+- `gemini` → use `/ask-gemini`
 
 ```
-/ask-codex "Cross-review:
+/ask-<provider> "Cross-review:
 
 Mode: [step|task]
 Target: [step title / task name]
@@ -48,8 +80,8 @@ Return JSON only."
 
 ### 3. Final Decision
 
-| Claude | Codex | Result |
-|--------|-------|--------|
+| Claude | Cross-review | Result |
+|--------|-------------|--------|
 | PASS | PASS | → PASS (continue) |
 | PASS | FIX | → FIX (Claude decides) |
 | FIX | PASS | → FIX (merge items) |
@@ -62,12 +94,13 @@ Return JSON only."
 {
   "mode": "step|task",
   "target": "<step title or task name>",
+  "crossReviewer": "codex|gemini",
   "verdict": "PASS|FIX|BLOCKED",
   "claudeAssessment": {
     "verdict": "PASS|FIX|UNCERTAIN",
     "reason": "<reason>"
   },
-  "codexAssessment": {
+  "crossAssessment": {
     "verdict": "PASS|FIX",
     "agreedWithClaude": true,
     "missedIssues": ["<issue>"],

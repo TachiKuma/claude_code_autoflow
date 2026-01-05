@@ -13,6 +13,16 @@ This is NOT a regular project - changes here affect all AutoFlow installations.
 
 ---
 
+## Version Management
+
+- **Commit**: Every change must be committed
+- **Push**: Only push when explicitly requested by user
+- **Version bump**: Increment minor version (e.g., 1.0.0 → 1.1.0) on each push
+- **README update**: Update version badge and add entry to Version History section
+- **Version History**: Collapsible section at end of README with changelog
+
+---
+
 # claude_autoflows — Project Memory (AutoFlow)
 
 Pure Skill workflow for structured task execution.

@@ -1,6 +1,6 @@
 # cca (Claude Code AutoFlow)
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)
 ![License](https://img.shields.io/badge/license-AGPL--3.0-green.svg)
 ![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows%20%7C%20WSL-lightgrey.svg)
 
@@ -127,3 +127,25 @@ Example:
 ## 📄 License
 
 [AGPL-3.0](LICENSE)
+
+---
+
+<details>
+<summary>📜 Version History</summary>
+
+### v1.1.0
+- Add Windows PowerShell support (cca.ps1)
+- Add role configuration system (P0: reviewer/documenter/designer)
+- Add OpenCode executor support (P1: executor routing)
+- Add Claude plan mode persistence (Preflight mode check)
+- Fix macOS bash 3.2/4.3 empty array compatibility
+- Add ask-gemini skill for Gemini integration
+
+### v1.0.0
+- Initial release
+- Core AutoFlow workflow (tp/tr)
+- Dual-design validation
+- Autoloop daemon
+- State management with state.json
+
+</details>

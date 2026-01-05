@@ -11,6 +11,14 @@ Execute current step while Claude stays in plan mode and Codex performs all file
 
 **Auto-loop daemon**: started by `/tp` (`bash ~/.claude/skills/tr/scripts/autoloop.sh start`). `/tr` should assume it is running and only ensure the finalize request doesn't stop it.
 
+### 1.0 Ensure Plan Mode
+
+Before any preflight/execution, ensure Claude is in **plan mode**:
+
+1) Check current mode (if uncertain, assume not in plan mode)
+2) If not in plan mode → call `/mode-switch plan`
+3) Wait for the mode switch confirmation, then proceed
+
 ### 1. Sync Current State (Codex)
 
 Claude does not read/modify repo files directly. Request Codex to:
@@ -29,9 +37,43 @@ Interpret `FileOpsRES`:
 - If attempts exceeded → request `autoflow_state_mark_blocked` with a reason → Stop
 - Otherwise use `data.stepContext` + `data.state.current` for Step Design
 
-### 2. Dual Design (Step)
+### 1.5 Resolve Roles Config (P1)
 
-Invoke `/dual-design` skill:
+Goal: support `reviewer` / `documenter` / `designer` routing, and allow `executor` switching between `codex` and `opencode`.
+
+Config locations (project overrides system):
+1) `<repo>/.autoflow/roles.json`
+2) `~/.config/cca/roles.json`
+3) Defaults
+
+Minimal schema (P0):
+```json
+{
+  "schemaVersion": 1,
+  "enabled": true,
+  "executor": "codex|opencode",
+  "reviewer": "codex|gemini",
+  "documenter": "codex|gemini",
+  "designer": ["claude", "codex|gemini"]
+}
+```
+
+Rules:
+- If `enabled != true` or `schemaVersion != 1` → ignore config (use defaults)
+- Default roles if nothing configured:
+  - `executor = "codex"`
+  - `reviewer = "codex"`
+  - `documenter = "codex"`
+  - `designer = ["claude", "codex"]`
+- Executor validation:
+  - Allow `executor = "codex"` or `executor = "opencode"`
+  - Otherwise → fall back to `codex`
+
+Implementation detail: Claude must not read repo files directly; request reads via `/file-op` (`read_file`) and parse JSON locally.
+
+### 2. Step Design (Role-Routed)
+
+If `designer` resolves to `["claude","codex"]` (default): invoke `/dual-design` skill:
 
 ```
 design_type: step
@@ -46,12 +88,18 @@ This executes:
 
 Returns merged approach with: `approach`, `doneConditions`, `risks`, plus split decision (`needsSplit`/`splitReason`/`proposedSubsteps`).
 
+If `designer` resolves to `["claude","gemini"]`:
+1) Claude produces the "Claude independent step design" as usual.
+2) Ask Gemini for an independent design:
+   - `/ask-gemini "Independent step design:\n\nStep: ...\nContext: ...\nReturn JSON only with keys: approach, doneConditions, risks, needsSplit, splitReason, proposedSubsteps (optional)."`
+3) Claude merges Claude+Gemini into the same merged output schema used above.
+
 ### 3. Split Check (Before Execution)
 
 After the Dual Design merge, decide whether this step must be split into substeps:
 
 - If `needsSplit=false` → continue to Step 4 (execution path)
-- If `needsSplit=true` → validate and apply split, then skip execution and jump to Step 8 (Finalize output)
+- If `needsSplit=true` → validate and apply split, then skip execution and jump to Step 9 (Finalize output)
 
 Validation rules for `proposedSubsteps`:
 - Count: 3-7
@@ -61,7 +109,7 @@ Validation rules for `proposedSubsteps`:
 If valid, apply split via `/file-op` (use `data.state.current.stepIndex` from Preflight):
 - Template: `../templates/split.json`
 
-Then go to Step 8 (Finalize) and output the split result (no execution performed).
+Then go to Step 9 (Finalize) and output the split result (no execution performed).
 
 ### 4. Build Step FileOpsREQ (Execution)
 
@@ -72,7 +120,9 @@ Based on merged approach:
 
 Key rule: Codex may modify code and artifacts needed to satisfy done conditions, but must **not** advance the step to `done` until Claude approves in Review.
 
-### 5. Send to Codex for Execution (FileOps)
+### 5. Send FileOpsREQ (FileOps)
+
+Send the constructed FileOpsREQ via `/file-op`:
 
 ```
 /file-op <the FileOpsREQ JSON>
@@ -80,7 +130,20 @@ Key rule: Codex may modify code and artifacts needed to satisfy done conditions,
 
 (`/file-op` handles `cask` + `TaskOutput`)
 
-### 6. Handle FileOpsRES
+### 6. Execute (Executor Routing)
+
+- If `executor == "codex"`:
+  - Codex directly executes FileOpsREQ operations and returns FileOpsRES.
+- If `executor == "opencode"`:
+  - Codex uses the internal `oask` skill to call OpenCode.
+  - Codex acts as supervisor:
+    - Translate FileOpsREQ ops into OpenCode-friendly instructions
+    - Guide OpenCode step-by-step to apply changes and run commands
+    - Review OpenCode results and validate against done conditions
+    - If fixes are needed, guide OpenCode to iterate (respect `constraints.max_attempts`)
+  - Codex returns the final FileOpsRES (JSON only) back to Claude.
+
+### 7. Handle FileOpsRES (Codex or OpenCode)
 
 **status = ok** → Go to Review
 
@@ -90,7 +153,14 @@ Key rule: Codex may modify code and artifacts needed to satisfy done conditions,
 
 Note: `status = split` should be handled by Step 3 (Split Check). Treat unexpected `split` here as `fail` and re-run /dual-design to decide `needsSplit`.
 
-### 7. Review (Claude + Codex)
+When `executor == "opencode"`:
+- FileOpsRES is still returned by Codex, but Codex must include proof that OpenCode actually applied the changes:
+  - Changed files list
+  - Diff summary (or key hunks)
+  - Commands executed (if any)
+- If results don't match `done` conditions, Codex must guide OpenCode to fix and re-run within `constraints.max_attempts`.
+
+### 8. Review (Claude + Codex)
 
 Invoke `/review` skill:
 
@@ -102,11 +172,11 @@ Invoke `/review` skill:
   proof: [execution summary]
 ```
 
-See `../../review/references/flow.md` for full flow (Claude assessment → Codex cross-review → Final decision).
+See `../../review/references/flow.md` for full flow (Claude assessment → role-routed cross-review → Final decision).
 
 Output: Review result with verdict (PASS/FIX/BLOCKED).
 
-### 7.5 Test (Optional)
+### 8.5 Test (Optional)
 
 **Claude 判断是否需要测试**：
 根据步骤性质判断：
@@ -141,7 +211,7 @@ Execute relevant tests and report:
 - Either FIX → Merge fix items → Back to step 5 (max 1 retry)
 - Disagreement → Claude makes final call with explanation
 
-### 8. Finalize (Codex)
+### 9. Finalize (Codex)
 
 If Step 3 applied a split (`needsSplit=true`):
 - Output: `Split applied. Next: first substep. Use /tr (autoloop will trigger if running).`
@@ -164,13 +234,13 @@ Recommended: combine finalize + auto-loop in one request (ops execute in order):
 
 Output result:
 - If more steps: `Step N complete. Next: [title]. Use /tr`
-- If all done: `Task complete!` + acceptance checklist → Continue to Step 9 (Final Review)
+- If all done: `Task complete!` + acceptance checklist → Continue to Step 10 (Final Review)
 
-### 9. Final Review (Task Completion Only)
+### 10. Final Review (Task Completion Only)
 
 **触发条件**：当 Step 8 Finalize 后检测到所有步骤已完成（`current.type == 'none'`）时执行此步骤。
 
-#### 9.1 全流程回顾审查
+#### 10.1 全流程回顾审查
 
 Invoke `/review` skill with task mode:
 
@@ -186,7 +256,7 @@ See `commands/review/flow.md` for full flow.
 
 Output: Task-level review result.
 
-#### 9.2 问题处理决策
+#### 10.2 问题处理决策
 
 根据审查结果：
 
@@ -204,9 +274,13 @@ Output: Task-level review result.
   3. 进入 9.3 完成当前任务报告
 - **需求本身不合理** → 记录原因，跳过修复，进入 9.3
 
-#### 9.3 撰写总结报告
+#### 10.3 撰写总结报告
 
-Claude 规划报告结构，Codex 撰写到 `final/` 文件夹：
+Claude 规划报告结构，并根据 `documenter` 生成 `reportContent`：
+- `documenter = "codex"` (default): Claude 直接生成 `reportContent`
+- `documenter = "gemini"`: Claude 先调用 `/ask-gemini` 生成 `reportContent`（markdown），再交给 Codex 写入文件
+
+Codex 将 `reportContent` 写入 `final/` 文件夹：
 
 - Template: `../templates/final-report.json`
 

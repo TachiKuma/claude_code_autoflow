@@ -45,6 +45,8 @@ __pycache__/
 .claude-session
 .codex-session
 .gemini-session
+.opencode-session
+opencode.json
 .claude/autoloop.lock
 .claude/autoloop.pid
 .claude/autoloop.log

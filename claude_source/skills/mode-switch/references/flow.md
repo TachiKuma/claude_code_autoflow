@@ -4,12 +4,11 @@ Switch Claude between plan mode and bypass mode.
 
 ---
 
-## Status: Deprecated (New Architecture)
+## Purpose (AutoFlow Architecture)
 
-AutoFlow now assumes **Claude stays in plan mode** (planning + review only), while **Codex performs all file I/O**.
+AutoFlow assumes **Claude stays in plan mode** (planning + review only), while **Codex performs all file I/O**.
 
-- New flows should not call `/mode-switch`.
-- This file is kept for backward compatibility with older scripts/docs.
+`/mode-switch` is used as a defensive guard to ensure Claude is in the intended mode (especially `plan`) before running workflows like `/tr`.
 
 ## Modes
 
@@ -66,10 +65,10 @@ This sends Enter to confirm bypass mode.', run_in_background=true)
 Called by other skills:
 
 ```
-# Before design phase
+# Ensure plan mode before planning/review flows
 /mode-switch plan
 
-# After design, ready to execute
+# Optional: switch to bypass only when explicitly required
 /mode-switch bypass
 ```
 

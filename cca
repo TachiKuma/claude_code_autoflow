@@ -90,8 +90,8 @@ log_warn() { printf "${YELLOW}[!]${NC} %s\n" "$1"; }
 log_error() { printf "${RED}[-]${NC} %s\n" "$1"; }
 log_blue() { printf "${BLUE}[*]${NC} %s\n" "$1"; }
 
-AUTOFLOW_SKILLS=(tr tp dual-design file-op ask-codex review mode-switch docs)
-AUTOFLOW_COMMANDS=(tr.md tp.md dual-design.md file-op.md ask-codex.md review.md mode-switch.md auto.md)
+AUTOFLOW_SKILLS=(tr tp dual-design file-op ask-codex ask-gemini review mode-switch docs)
+AUTOFLOW_COMMANDS=(tr.md tp.md dual-design.md file-op.md ask-codex.md ask-gemini.md review.md mode-switch.md auto.md)
 
 detect_platform() {
     local name
@@ -371,6 +371,48 @@ install_global_skills() {
     log_info "Installed skills/commands to ~/.claude/ (globally visible)"
 }
 
+ensure_system_roles_config() {
+    local roles_cfg="$CCA_HOME/roles.json"
+    if [[ -f "$roles_cfg" ]]; then
+        return 0
+    fi
+    cat > "$roles_cfg" <<'JSON'
+{
+  "schemaVersion": 1,
+  "enabled": true,
+  "executor": "codex",
+  "reviewer": "codex",
+  "documenter": "codex",
+  "designer": ["claude", "codex"]
+}
+JSON
+    log_info "Created system roles config: $roles_cfg"
+}
+
+ensure_project_roles_config() {
+    local project_root="$1"
+    local target_dir="$project_root/.autoflow"
+    local target_file="$target_dir/roles.json"
+    local template="$CCA_SOURCE/claude_source/templates/roles.json"
+
+    if [[ -f "$target_file" ]]; then
+        log_warn "Project roles config already exists: $target_file"
+        return 0
+    fi
+
+    mkdir -p "$target_dir" 2>/dev/null || true
+    if [[ -f "$template" ]]; then
+        if cp -n "$template" "$target_file" 2>/dev/null; then
+            :
+        else
+            cp "$template" "$target_file"
+        fi
+        log_info "Installed project roles config: $target_file"
+    else
+        log_warn "Roles template not found (skipping): $template"
+    fi
+}
+
 # Command: version
 cmd_version() {
     local install_dir=""
@@ -444,6 +486,8 @@ cmd_add() {
             target="$(pwd)"
             log_blue "Configuring current project: $target"
             do_install "$target" "project"
+            ensure_system_roles_config || true
+            ensure_project_roles_config "$target" || true
             ;;
         *)
             # Resolve path
@@ -456,6 +500,8 @@ cmd_add() {
             }
             log_blue "Configuring: $target"
             do_install "$target" "project"
+            ensure_system_roles_config || true
+            ensure_project_roles_config "$target" || true
             ;;
     esac
 
