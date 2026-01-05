@@ -15,7 +15,7 @@
   <img src="https://img.shields.io/badge/Automated_Collaboration-CF1322?style=for-the-badge" alt="Automated Collaboration">
 </p>
 
-![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.3.0-blue.svg)
 ![License](https://img.shields.io/badge/license-AGPL--3.0-green.svg)
 ![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows%20%7C%20WSL-lightgrey.svg)
 
@@ -139,6 +139,20 @@ cca <command> [options]
 
 ## 📖 Usage
 
+### Prerequisites: Start Codex Session
+
+Before using CCA, you need to start a Codex session in a separate terminal pane:
+
+```bash
+# In WezTerm, open a new pane and start Codex
+codex
+```
+
+Verify Codex is running:
+```bash
+cping    # Should return "Codex connection OK"
+```
+
 ### CLI Commands
 
 ```bash
@@ -176,13 +190,38 @@ cca help               # Show help
 | :--- | :--- |
 | `/auto <requirement>` | Create task plan (invokes tp skill) |
 | `/auto run` | Execute current step (invokes tr skill) |
+| `/file-op` | Delegate file operations to Codex |
+| `/review` | Trigger cross-review |
+| `/roles show` | Show current role configuration |
 
-Example:
-```bash
-/auto implement user login    # Creates plan, autoloop starts execution
+### Workflow: Claude Plans, Codex Executes
+
+CCA enforces a **separation of concerns**:
+- **Claude**: Plans tasks, constructs requests (stays in plan mode)
+- **Codex**: Executes file modifications and commands
+
+```
+User Request → Claude (Plan) → /file-op → Codex (Execute) → Review
 ```
 
-> **Note**: After `/auto <requirement>` completes planning, autoloop automatically triggers execution. No manual `/auto run` needed.
+#### Quick Start Example
+```bash
+# 1. Start Codex in a separate pane
+codex
+
+# 2. In Claude session, enable AutoFlow for your project
+cca add .
+
+# 3. Ask Claude to make changes - it will automatically delegate to Codex
+"Please add a login function to auth.py"
+# Claude constructs FileOpsREQ → Codex executes → Returns result
+```
+
+#### For Complex Tasks (AutoFlow)
+```bash
+/auto implement user authentication system
+# Creates plan with dual-design → autoloop triggers execution
+```
 
 ## 📄 License
 
@@ -192,6 +231,13 @@ Example:
 
 <details>
 <summary>📜 Version History</summary>
+
+### v1.3.0
+- Add roles hardening: Codex self-resolves roles from config files
+- Add cca-roles-hook (Python): structured output with config signature marker
+- Add /file-op executor routing: codex (direct) or opencode (via oask)
+- Update CLAUDE.md with default workflow rules
+- Add comprehensive test suite (11 test cases)
 
 ### v1.2.0
 - Add bilingual slogan and language switch
