@@ -15,7 +15,7 @@
   <img src="https://img.shields.io/badge/Automated_Collaboration-CF1322?style=for-the-badge" alt="Automated Collaboration">
 </p>
 
-![Version](https://img.shields.io/badge/version-1.3.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.4.0-blue.svg)
 ![License](https://img.shields.io/badge/license-AGPL--3.0-green.svg)
 ![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows%20%7C%20WSL-lightgrey.svg)
 
@@ -231,6 +231,12 @@ cca add .
 
 <details>
 <summary>📜 Version History</summary>
+
+### v1.4.0
+- Fix cca update: sync bin tools after git pull
+- Fix cca update: refresh project configs (settings.json, CLAUDE.md)
+- Fix commands sync: use .cca-owned manifest to mirror commands
+- Add cca add: auto-inject CLAUDE.md workflow policy
 
 ### v1.3.0
 - Add roles hardening: Codex self-resolves roles from config files
