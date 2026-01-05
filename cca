@@ -90,8 +90,8 @@ log_warn() { printf "${YELLOW}[!]${NC} %s\n" "$1"; }
 log_error() { printf "${RED}[-]${NC} %s\n" "$1"; }
 log_blue() { printf "${BLUE}[*]${NC} %s\n" "$1"; }
 
-AUTOFLOW_SKILLS=(tr tp dual-design file-op ask-codex ask-gemini review mode-switch docs)
-AUTOFLOW_COMMANDS=(tr.md tp.md dual-design.md file-op.md ask-codex.md ask-gemini.md review.md mode-switch.md auto.md)
+AUTOFLOW_SKILLS=(tr tp dual-design file-op ask-codex ask-gemini roles review mode-switch docs)
+AUTOFLOW_COMMANDS=(tr.md tp.md dual-design.md file-op.md ask-codex.md ask-gemini.md roles.md review.md mode-switch.md auto.md)
 
 detect_platform() {
     local name
@@ -413,6 +413,87 @@ ensure_project_roles_config() {
     fi
 }
 
+ensure_hook_installed() {
+    local bin_dir="$CCA_BIN_DIR"
+    bin_dir="$(dirname "$(command -v cca 2>/dev/null || echo "$CCA_BIN_DIR/cca")")"
+    local src="$CCA_SOURCE/cca-roles-hook"
+    local dst="$bin_dir/cca-roles-hook"
+
+    if [[ ! -f "$src" ]]; then
+        log_warn "Hook script not found (skipping install): $src"
+        return 0
+    fi
+
+    mkdir -p "$bin_dir" 2>/dev/null || true
+    if cp -f "$src" "$dst" 2>/dev/null; then
+        chmod +x "$dst" 2>/dev/null || true
+        log_info "Installed hook: $dst"
+    else
+        log_warn "Failed to install hook to: $dst (permission denied?)"
+    fi
+}
+
+ensure_claude_settings_hook() {
+    local project_root="$1"
+    local claude_dir="$project_root/.claude"
+    local settings="$claude_dir/settings.json"
+
+    mkdir -p "$claude_dir" 2>/dev/null || true
+
+    # Merge/update JSON safely via python. If invalid JSON, skip to avoid clobbering.
+    python3 - "$settings" <<'PY'
+import json, os, sys
+from pathlib import Path
+
+settings_path = Path(sys.argv[1])
+hook_obj = {"matcher": ".*", "commands": ["cca-roles-hook"]}
+
+data = {}
+if settings_path.exists():
+    try:
+        data = json.loads(settings_path.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            raise ValueError("settings.json is not an object")
+    except Exception:
+        # Do not overwrite unknown/invalid config.
+        sys.exit(2)
+
+hooks = data.get("hooks")
+if not isinstance(hooks, dict):
+    hooks = {}
+    data["hooks"] = hooks
+
+pre = hooks.get("PreToolUse")
+if not isinstance(pre, list):
+    pre = []
+    hooks["PreToolUse"] = pre
+
+def has_hook(entry):
+    if not isinstance(entry, dict):
+        return False
+    cmds = entry.get("commands")
+    if not isinstance(cmds, list):
+        return False
+    return "cca-roles-hook" in cmds
+
+if not any(has_hook(e) for e in pre):
+    pre.append(hook_obj)
+
+settings_path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+PY
+
+    local code=$?
+    if [[ $code -eq 2 ]]; then
+        log_warn "Invalid JSON (skipping): $settings"
+        return 0
+    fi
+    if [[ $code -ne 0 ]]; then
+        log_warn "Failed to update .claude/settings.json: $settings"
+        return 0
+    fi
+    log_info "Configured PreToolUse hook: $settings"
+}
+
 # Command: version
 cmd_version() {
     local install_dir=""
@@ -488,6 +569,8 @@ cmd_add() {
             do_install "$target" "project"
             ensure_system_roles_config || true
             ensure_project_roles_config "$target" || true
+            ensure_hook_installed || true
+            ensure_claude_settings_hook "$target" || true
             ;;
         *)
             # Resolve path
@@ -502,6 +585,8 @@ cmd_add() {
             do_install "$target" "project"
             ensure_system_roles_config || true
             ensure_project_roles_config "$target" || true
+            ensure_hook_installed || true
+            ensure_claude_settings_hook "$target" || true
             ;;
     esac
 

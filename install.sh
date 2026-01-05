@@ -158,18 +158,30 @@ install_bin_links() {
   fi
 
   log_info "Installed: $BIN_DIR/cca"
+
+  # PreToolUse hook (best effort)
+  if [[ -f "$INSTALL_PREFIX/cca-roles-hook" ]]; then
+    chmod +x "$INSTALL_PREFIX/cca-roles-hook" 2>/dev/null || true
+    if ln -sf "$INSTALL_PREFIX/cca-roles-hook" "$BIN_DIR/cca-roles-hook" 2>/dev/null; then
+      :
+    else
+      cp -f "$INSTALL_PREFIX/cca-roles-hook" "$BIN_DIR/cca-roles-hook" 2>/dev/null || true
+      chmod +x "$BIN_DIR/cca-roles-hook" 2>/dev/null || true
+    fi
+    log_info "Installed: $BIN_DIR/cca-roles-hook"
+  fi
 }
 
 install_global_skills() {
   local target="$HOME/.claude"
   mkdir -p "$target/skills" "$target/commands"
 
-  for skill in tr tp dual-design file-op ask-codex ask-gemini review mode-switch docs; do
+  for skill in tr tp dual-design file-op ask-codex ask-gemini roles review mode-switch docs; do
     rm -rf "$target/skills/$skill" 2>/dev/null || true
     cp -a "$INSTALL_PREFIX/claude_source/skills/$skill" "$target/skills/"
   done
 
-  for cmd in tr.md tp.md dual-design.md file-op.md ask-codex.md ask-gemini.md review.md mode-switch.md; do
+  for cmd in tr.md tp.md dual-design.md file-op.md ask-codex.md ask-gemini.md roles.md review.md mode-switch.md; do
     cp -a "$INSTALL_PREFIX/claude_source/commands/$cmd" "$target/commands/"
   done
 

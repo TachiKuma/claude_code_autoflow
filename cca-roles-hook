@@ -1,0 +1,142 @@
+#!/usr/bin/env python3
+"""
+cca-roles-hook (PreToolUse)
+
+Hard requirements:
+- Best-effort "first tool call" only using a marker file
+- Marker invalidates automatically when roles config changes (signature-based)
+- Prints a compact, machine-friendly roles payload to stdout for context injection
+
+Roles priority:
+1) .autoflow/roles.session.json
+2) .autoflow/roles.json
+3) ~/.config/cca/roles.json (or $XDG_CONFIG_HOME/cca/roles.json)
+4) defaults
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+import sys
+from pathlib import Path
+from typing import Any, Optional, Tuple
+
+DEFAULT_ROLES: dict[str, Any] = {
+    "schemaVersion": 1,
+    "enabled": True,
+    "executor": "codex",
+    "reviewer": "codex",
+    "documenter": "codex",
+    "designer": ["claude", "codex"],
+}
+
+
+def _find_repo_root(start: Path) -> Path:
+    cur = start.resolve()
+    for p in [cur, *cur.parents]:
+        if (p / ".autoflow").is_dir():
+            return p
+        if (p / ".claude").is_dir():
+            return p
+        if (p / ".git").is_dir():
+            return p
+    return cur
+
+
+def _config_home() -> Path:
+    xdg = os.environ.get("XDG_CONFIG_HOME")
+    if xdg:
+        return Path(xdg).expanduser()
+    return Path.home() / ".config"
+
+
+def _try_read_json(path: Path) -> Optional[dict[str, Any]]:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            return None
+        return data
+    except Exception:
+        return None
+
+
+def _is_enabled_v1(obj: dict[str, Any]) -> bool:
+    try:
+        if int(obj.get("schemaVersion", 0)) != 1:
+            return False
+        return obj.get("enabled", True) is True
+    except Exception:
+        return False
+
+
+def _candidates(repo_root: Path) -> list[tuple[Path, str]]:
+    return [
+        (repo_root / ".autoflow" / "roles.session.json", "session"),
+        (repo_root / ".autoflow" / "roles.json", "project"),
+        (_config_home() / "cca" / "roles.json", "system"),
+    ]
+
+
+def _file_sig(path: Path) -> str:
+    try:
+        st = path.stat()
+        return f"{path}|{st.st_mtime_ns}|{st.st_size}"
+    except FileNotFoundError:
+        return f"{path}|missing"
+    except Exception:
+        return f"{path}|error"
+
+
+def _config_signature(repo_root: Path) -> str:
+    parts = [_file_sig(p) for p, _ in _candidates(repo_root)]
+    raw = "\n".join(parts).encode("utf-8", errors="replace")
+    return hashlib.sha256(raw).hexdigest()[:16]
+
+
+def _marker_path(repo_root: Path, sig: str) -> Path:
+    repo_hash = hashlib.sha256(str(repo_root).encode("utf-8")).hexdigest()[:12]
+    name = f"cca-roles-hook.{repo_hash}.{sig}.marker"
+    tmp = os.environ.get("TMPDIR") or os.environ.get("TEMP") or "/tmp"
+    return Path(tmp) / name
+
+
+def _resolve_roles(repo_root: Path) -> Tuple[dict[str, Any], str]:
+    for path, label in _candidates(repo_root):
+        obj = _try_read_json(path)
+        if not obj:
+            continue
+        if not _is_enabled_v1(obj):
+            continue
+        return obj, f"{label}:{path}"
+    return DEFAULT_ROLES, "default"
+
+
+def main() -> int:
+    repo_root = _find_repo_root(Path.cwd())
+    sig = _config_signature(repo_root)
+    marker = _marker_path(repo_root, sig)
+
+    try:
+        if marker.exists():
+            return 0
+        marker.write_text("ok\n", encoding="utf-8")
+    except Exception:
+        # If marker write fails, still output (best effort).
+        pass
+
+    roles, source = _resolve_roles(repo_root)
+
+    payload = {
+        "proto": "cca.roles.v1",
+        "source": source,
+        "repoRoot": str(repo_root),
+        "roles": roles,
+    }
+    sys.stdout.write("[CCA_ROLES_V1] " + json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + "\n")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

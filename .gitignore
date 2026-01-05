@@ -56,3 +56,5 @@ plan_log.md
 tmp/
 final/
 .claude/plans/
+.autoflow/roles.session.json
+.claude/.cca-roles-hook*

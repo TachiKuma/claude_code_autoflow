@@ -62,8 +62,8 @@ $CCA_SOURCE = if ($env:CCA_SOURCE) { $env:CCA_SOURCE } else { $CCA_SCRIPT_ROOT }
 $INSTALLATIONS_FILE = Join-PathSafe $CCA_HOME 'installations.csv'
 $LEGACY_INSTALLATIONS_FILE = Join-PathSafe $CCA_HOME 'installations'
 
-$AUTOFLOW_SKILLS = @('tr', 'tp', 'dual-design', 'file-op', 'ask-codex', 'ask-gemini', 'review', 'mode-switch', 'docs')
-$AUTOFLOW_COMMANDS = @('tr.md', 'tp.md', 'dual-design.md', 'file-op.md', 'ask-codex.md', 'ask-gemini.md', 'review.md', 'mode-switch.md', 'auto.md')
+$AUTOFLOW_SKILLS = @('tr', 'tp', 'dual-design', 'file-op', 'ask-codex', 'ask-gemini', 'roles', 'review', 'mode-switch', 'docs')
+$AUTOFLOW_COMMANDS = @('tr.md', 'tp.md', 'dual-design.md', 'file-op.md', 'ask-codex.md', 'ask-gemini.md', 'roles.md', 'review.md', 'mode-switch.md', 'auto.md')
 
 function Write-Info { param([string]$Message) Write-Host ("[+] {0}" -f $Message) -ForegroundColor Green }
 function Write-Warn { param([string]$Message) Write-Host ("[!] {0}" -f $Message) -ForegroundColor Yellow }
@@ -505,7 +505,6 @@ function Install-GlobalSkills {
     }
 
     foreach ($cmd in $AUTOFLOW_COMMANDS) {
-        if ($cmd -eq 'auto.md') { continue } # match bash behavior
         $src = Join-PathSafe $SourceRoot ("claude_source\commands\{0}" -f $cmd)
         Copy-Item -LiteralPath $src -Destination $targetCmds -Force
     }
@@ -641,6 +640,72 @@ function Cmd-Version {
     }
 }
 
+function Ensure-HookInstalled {
+    $binDir = $CCA_BIN_DIR
+    try {
+        $ccaCmd = Get-Command cca -ErrorAction SilentlyContinue
+        if ($ccaCmd -and $ccaCmd.Path) { $binDir = Split-Path -Parent $ccaCmd.Path }
+    } catch { }
+
+    $srcPs1 = Join-PathSafe $CCA_SOURCE 'cca-roles-hook.ps1'
+    $dstPs1 = Join-PathSafe $binDir 'cca-roles-hook.ps1'
+    $dstCmd = Join-PathSafe $binDir 'cca-roles-hook.cmd'
+
+    if (-not (Test-Path -LiteralPath $srcPs1)) {
+        Write-Warn ("Hook script not found (skipping install): {0}" -f $srcPs1)
+        return
+    }
+    try { New-Item -ItemType Directory -Path $binDir -Force | Out-Null } catch { }
+
+    try {
+        Copy-Item -LiteralPath $srcPs1 -Destination $dstPs1 -Force
+        $cmd = "@echo off`r`n" +
+               "powershell -NoProfile -ExecutionPolicy Bypass -File `"%~dp0cca-roles-hook.ps1`" %*`r`n"
+        Write-AllTextUtf8NoBom -Path $dstCmd -Text $cmd
+        Write-Info ("Installed hook: {0}" -f $dstCmd)
+    } catch {
+        Write-Warn ("Failed to install hook to: {0}" -f $binDir)
+    }
+}
+
+function Ensure-ClaudeSettingsHook {
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+    $claudeDir = Join-PathSafe $ProjectRoot '.claude'
+    $settingsPath = Join-PathSafe $claudeDir 'settings.json'
+    try { New-Item -ItemType Directory -Path $claudeDir -Force | Out-Null } catch { }
+
+    $hookObj = @{ matcher = '.*'; commands = @('cca-roles-hook') }
+    $data = @{}
+    if (Test-Path -LiteralPath $settingsPath) {
+        try {
+            $raw = Get-Content -LiteralPath $settingsPath -Raw -ErrorAction Stop
+            $parsed = $raw | ConvertFrom-Json -ErrorAction Stop
+            if ($parsed) { $data = $parsed }
+        } catch {
+            Write-Warn ("Invalid JSON (skipping): {0}" -f $settingsPath)
+            return
+        }
+    }
+    if (-not $data.hooks) { $data | Add-Member -NotePropertyName hooks -NotePropertyValue (@{}) -Force }
+    if (-not $data.hooks.PreToolUse) { $data.hooks.PreToolUse = @() }
+
+    $exists = $false
+    foreach ($e in $data.hooks.PreToolUse) {
+        try {
+            if ($e.commands -and ($e.commands -contains 'cca-roles-hook')) { $exists = $true; break }
+        } catch { }
+    }
+    if (-not $exists) { $data.hooks.PreToolUse += $hookObj }
+
+    try {
+        $json = $data | ConvertTo-Json -Depth 16
+        Write-AllTextUtf8NoBom -Path $settingsPath -Text ($json + "`n")
+        Write-Info ("Configured PreToolUse hook: {0}" -f $settingsPath)
+    } catch {
+        Write-Warn ("Failed to update .claude/settings.json: {0}" -f $settingsPath)
+    }
+}
+
 function Cmd-Add {
     param([string]$Target)
     if (-not $Target) {
@@ -654,6 +719,8 @@ function Cmd-Add {
         Invoke-Install -Path $p -Type 'project'
         Ensure-SystemRolesConfig
         Ensure-ProjectRolesConfig -ProjectRoot $p
+        Ensure-HookInstalled
+        Ensure-ClaudeSettingsHook -ProjectRoot $p
     } else {
         $candidate = Expand-UserPath -Path $Target
         if (-not [System.IO.Path]::IsPathRooted($candidate)) {
@@ -664,6 +731,8 @@ function Cmd-Add {
         Invoke-Install -Path $p -Type 'project'
         Ensure-SystemRolesConfig
         Ensure-ProjectRolesConfig -ProjectRoot $p
+        Ensure-HookInstalled
+        Ensure-ClaudeSettingsHook -ProjectRoot $p
     }
 
     Write-Host ''

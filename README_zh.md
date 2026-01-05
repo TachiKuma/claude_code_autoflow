@@ -48,6 +48,49 @@ WezTerm  →  ccb (Claude Code Bridge)  →  cca (Claude Code AutoFlow)
 | **自动化** | `autoloop` | 后台守护进程，实现持续的上下文感知执行。 |
 | **状态管理** | SSOT | 使用 `state.json` 作为任务状态的唯一数据源。 |
 
+## 🎭 角色配置（适用于所有任务）
+
+CCA 支持为不同阶段分配不同模型角色。该路由不仅适用于 AutoFlow 工作流（`/tp`、`/tr`），也适用于日常的轻量任务：Claude 常驻计划模式，通过技能委派（例如 `/file-op`、`/review`、`/roles`）让不同执行者完成工作。
+
+### 配置位置与优先级
+
+- **会话级**（最高优先级）：`<project_root>/.autoflow/roles.session.json`
+- **项目级**：`<project_root>/.autoflow/roles.json`
+- **系统级**：`~/.config/cca/roles.json`
+
+优先级：会话级 > 项目级 > 系统级 > 默认值。
+
+### 支持的角色字段
+
+- **executor**：执行代码修改（例如 `codex`、`opencode`）
+- **reviewer**：审查代码/逻辑（例如 `codex`、`gemini`）
+- **documenter**：生成文档（例如 `codex`、`gemini`）
+- **designer**：参与双重设计（例如 `["claude", "codex"]`）
+
+### /roles（轻量管理）
+
+无需启动完整 `/tp`/`/tr`，可直接用 `/roles` 管理角色：
+
+```bash
+/roles show
+/roles set executor=opencode reviewer=gemini
+/roles clear
+/roles init
+```
+
+### 示例配置
+
+```json
+{
+  "schemaVersion": 1,
+  "enabled": true,
+  "executor": "opencode",
+  "reviewer": "gemini",
+  "documenter": "gemini",
+  "designer": ["claude", "codex"]
+}
+```
+
 ## 🚀 安装步骤
 
 ### 1. 安装 WezTerm

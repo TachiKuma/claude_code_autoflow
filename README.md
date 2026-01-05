@@ -46,6 +46,45 @@ WezTerm  →  ccb (Claude Code Bridge)  →  cca (Claude Code AutoFlow)
 | **State Management** | `state.json` as Single Source of Truth |
 | **Context Awareness** | Auto `/clear` when context usage exceeds threshold |
 
+## 🎭 Role Configuration
+
+CCA supports flexible role assignment for different workflow stages. This routing can be used both in AutoFlow workflows (`/tp`, `/tr`) and in lightweight day-to-day tasks when you delegate work via skills (e.g. `/file-op`, `/review`, `/roles`).
+
+### Configuration Locations
+- **Session Level** (Overrides all): `<project_root>/.autoflow/roles.session.json`
+- **Project Level**: `<project_root>/.autoflow/roles.json`
+- **System Level**: `~/.config/cca/roles.json`
+
+Priority: session > project > system > defaults.
+
+### Supported Roles
+- **executor**: Executes code changes (e.g., `codex`, `opencode`)
+- **reviewer**: Reviews code and logic (e.g., `codex`, `gemini`)
+- **documenter**: Generates documentation (e.g., `codex`, `gemini`)
+- **designer**: Participates in the dual-design phase (e.g., `["claude", "codex"]`)
+
+### Manage Roles (Lightweight)
+Use `/roles` to manage roles without starting a full `/tp`/`tr` workflow:
+
+```bash
+/roles show
+/roles set executor=opencode reviewer=gemini
+/roles clear
+/roles init
+```
+
+### Example Configuration
+```json
+{
+  "schemaVersion": 1,
+  "enabled": true,
+  "executor": "opencode",
+  "reviewer": "gemini",
+  "documenter": "gemini",
+  "designer": ["claude", "codex"]
+}
+```
+
 ## 🚀 Installation
 
 ### 1. Install WezTerm

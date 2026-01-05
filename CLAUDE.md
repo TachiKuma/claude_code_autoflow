@@ -13,6 +13,18 @@ This is NOT a regular project - changes here affect all AutoFlow installations.
 
 ---
 
+## Collaboration Rules
+
+- Claude 不直接执行文件修改，通过 `cask`/`oask`/`gask` 委派
+- 根据 `roles.json` 选择执行者/审查者/文档者/设计者（项目级配置优先于系统级配置）
+- 默认工作流：任何涉及仓库文件修改或命令执行 → 必须走 `/file-op`；任何需要交叉审查 → 走 `/review`
+- 执行者选择：
+  - `executor=codex` → 通过 `cask`（默认）
+  - `executor=opencode` → 通过 `oask`（或由 Codex 通过 `oask` 转发并监督）
+  - `reviewer/documenter=gemini` → 通过 `gask`
+
+---
+
 ## Version Management
 
 - **Commit**: Every change must be committed
