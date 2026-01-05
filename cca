@@ -64,7 +64,7 @@ Commands:
   delete .       Remove Codex permissions config for current project
   delete <path>  Remove Codex permissions config for a project
 
-  update [--local]  Update cca and refresh ~/.claude/
+  update [--local] [--no-reexec]  Update cca and refresh ~/.claude/
   list           Show configured projects
   uninstall      Remove cca from system
 
@@ -77,6 +77,7 @@ Examples:
   cca delete .               # Remove config from current project
   cca update                 # Update cca and refresh ~/.claude/
   cca update --local         # Refresh ~/.claude/ from current CCA_SOURCE
+  cca update --no-reexec     # Do not re-exec into the updated cca
 
 Config:
   CCA_HOME=$CCA_HOME
@@ -824,7 +825,50 @@ cmd_delete() {
 
 # Command: update
 cmd_update() {
-    local mode="${1:-}"
+    local mode=""
+    local post_update=0
+    local no_reexec=0
+    local arg=""
+    for arg in "$@"; do
+        case "$arg" in
+            --local) mode="--local" ;;
+            --post-update) post_update=1 ;;
+            --no-reexec) no_reexec=1 ;;
+            "")
+                ;;
+            *)
+                log_error "Unknown option for update: $arg"
+                log_error "Usage: cca update [--local] [--no-reexec]"
+                exit 1
+                ;;
+        esac
+    done
+
+    if [[ "$post_update" -eq 1 ]]; then
+        local install_dir=""
+        if install_dir="$(system_install_dir 2>/dev/null)"; then
+            :
+        else
+            install_dir="$CCA_SOURCE"
+        fi
+
+        local installed_version
+        installed_version="$(get_installed_version_string "$install_dir")"
+
+        case "${CCA_POST_UPDATE_STATUS:-}" in
+            updated)
+                log_info "Updated to cca v$VERSION ($installed_version)"
+                ;;
+            uptodate)
+                log_info "cca already up to date (v$VERSION $installed_version)"
+                ;;
+            *)
+                log_info "cca version: v$VERSION ($installed_version)"
+                ;;
+        esac
+        return 0
+    fi
+
     require_platform
     local source_root=""
 
@@ -928,6 +972,13 @@ cmd_update() {
         else
             log_info "System installation already up to date"
         fi
+
+        # Export a lightweight status marker for the post-update re-exec.
+        if [[ "$version_changed" -eq 1 ]]; then
+            export CCA_POST_UPDATE_STATUS="updated"
+        else
+            export CCA_POST_UPDATE_STATUS="uptodate"
+        fi
     fi
 
     # Refresh globally visible skills/commands in ~/.claude/
@@ -955,6 +1006,23 @@ cmd_update() {
 
     echo ""
     log_info "Updated $count project(s)"
+
+    # Hot-reexec into the updated cca binary so the user sees final status from the new version.
+    if [[ "$mode" != "--local" && "$no_reexec" -ne 1 ]]; then
+        local bin_cca=""
+        bin_cca="$(command -v cca 2>/dev/null || true)"
+        if [[ -z "${bin_cca:-}" ]]; then
+            if install_dir="$(system_install_dir 2>/dev/null)"; then
+                bin_cca="$install_dir/cca"
+            fi
+        fi
+
+        if [[ -n "${bin_cca:-}" && -x "$bin_cca" ]]; then
+            exec "$bin_cca" update --post-update
+        else
+            log_warn "Unable to re-exec updated cca (not found/executable); run 'cca version' to confirm."
+        fi
+    fi
 }
 
 # Command: list
@@ -1033,7 +1101,7 @@ case "${1:-}" in
         cmd_delete "$2"
         ;;
     update|upgrade)
-        cmd_update "${2:-}"
+        cmd_update "${@:2}"
         ;;
     list|ls)
         cmd_list
