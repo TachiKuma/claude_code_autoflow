@@ -494,6 +494,57 @@ PY
     log_info "Configured PreToolUse hook: $settings"
 }
 
+ensure_project_claude_md_policy() {
+    local project_root="$1"
+    local file="$project_root/CLAUDE.md"
+    local start="<!-- CCA_WORKFLOW_POLICY -->"
+    local end="<!-- /CCA_WORKFLOW_POLICY -->"
+
+    local block
+    block="$(cat <<'MD'
+<!-- CCA_WORKFLOW_POLICY -->
+## CCA Default Workflow
+
+- All file modifications must use /file-op (delegated to Codex)
+- All cross-reviews via /review
+- Roles are auto-resolved from: session > project > system > default
+<!-- /CCA_WORKFLOW_POLICY -->
+MD
+)"
+
+    if [[ -f "$file" ]]; then
+        if grep -qF "$start" "$file" 2>/dev/null; then
+            return 0
+        fi
+        if [[ ! -w "$file" ]]; then
+            log_warn "CLAUDE.md not writable (skipping policy insert): $file"
+            return 0
+        fi
+        {
+            echo ""
+            echo "$block"
+        } >> "$file" || { log_warn "Failed to append policy to CLAUDE.md: $file"; return 0; }
+        log_info "Injected CCA workflow policy into: $file"
+        return 0
+    fi
+
+    # Create CLAUDE.md if missing.
+    if ( mkdir -p "$project_root" 2>/dev/null ) && ( touch "$file" 2>/dev/null ); then
+        :
+    else
+        log_warn "Failed to create CLAUDE.md (skipping policy): $file"
+        return 0
+    fi
+
+    if [[ ! -w "$file" ]]; then
+        log_warn "CLAUDE.md not writable (skipping policy create): $file"
+        return 0
+    fi
+
+    printf "%s\n" "$block" > "$file" || { log_warn "Failed to write CLAUDE.md: $file"; return 0; }
+    log_info "Created CLAUDE.md with CCA workflow policy: $file"
+}
+
 # Command: version
 cmd_version() {
     local install_dir=""
@@ -571,6 +622,7 @@ cmd_add() {
             ensure_project_roles_config "$target" || true
             ensure_hook_installed || true
             ensure_claude_settings_hook "$target" || true
+            ensure_project_claude_md_policy "$target" || true
             ;;
         *)
             # Resolve path
@@ -587,6 +639,7 @@ cmd_add() {
             ensure_project_roles_config "$target" || true
             ensure_hook_installed || true
             ensure_claude_settings_hook "$target" || true
+            ensure_project_claude_md_policy "$target" || true
             ;;
     esac
 
