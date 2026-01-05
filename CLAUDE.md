@@ -61,3 +61,13 @@ Task execution workflow. After `/clear`, read:
 
 Commands: `/tp [requirement]` (plan), `/tr` (run)
 <!-- /AUTOFLOW -->
+
+<!-- CCA_WORKFLOW_POLICY -->
+## CCA Default Workflow
+
+- Claude stays in plan mode by default
+- Delegation commands (cask/gask/oask, /file-op, /review) can run in plan mode
+- All file modifications must use /file-op (delegated to executor)
+- All cross-reviews via /review
+- Roles are auto-resolved from: session > project > system > default
+<!-- /CCA_WORKFLOW_POLICY -->
