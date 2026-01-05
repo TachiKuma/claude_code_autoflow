@@ -15,7 +15,7 @@
   <img src="https://img.shields.io/badge/Automated_Collaboration-CF1322?style=for-the-badge" alt="Automated Collaboration">
 </p>
 
-![Version](https://img.shields.io/badge/version-1.4.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.5.0-blue.svg)
 ![License](https://img.shields.io/badge/license-AGPL--3.0-green.svg)
 ![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows%20%7C%20WSL-lightgrey.svg)
 
@@ -231,6 +231,10 @@ cca add .
 
 <details>
 <summary>📜 Version History</summary>
+
+### v1.5.0
+- Fix hooks format for Claude Code new API
+- Remove dead code
 
 ### v1.4.0
 - Fix cca update: sync bin tools after git pull

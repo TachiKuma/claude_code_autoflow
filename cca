@@ -5,7 +5,7 @@
 set -euo pipefail
 shopt -s nullglob
 
-VERSION="1.4.0"
+VERSION="1.5.0"
 GIT_COMMIT=""
 GIT_DATE=""
 
@@ -553,7 +553,10 @@ import json, os, sys
 from pathlib import Path
 
 settings_path = Path(sys.argv[1])
-hook_obj = {"matcher": ".*", "commands": ["cca-roles-hook"]}
+hook_obj = {
+    "matcher": {"tools": [".*"]},
+    "hooks": [{"type": "command", "command": "cca-roles-hook"}],
+}
 
 data = {}
 if settings_path.exists():
@@ -575,18 +578,57 @@ if not isinstance(pre, list):
     pre = []
     hooks["PreToolUse"] = pre
 
-def has_hook(entry):
-    if not isinstance(entry, dict):
+def is_new_format_hook(entry: dict) -> bool:
+    hs = entry.get("hooks")
+    if not isinstance(hs, list):
         return False
+    for h in hs:
+        if not isinstance(h, dict):
+            continue
+        if h.get("type") == "command" and h.get("command") == "cca-roles-hook":
+            return True
+    return False
+
+def migrate_old_entry(entry: dict) -> dict:
+    # Best-effort migration from legacy:
+    # {"matcher": ".*", "commands": ["cca-roles-hook", ...]}
+    matcher = entry.get("matcher", ".*")
+    if isinstance(matcher, dict):
+        new_matcher = matcher
+    elif isinstance(matcher, str) and matcher:
+        new_matcher = {"tools": [matcher]}
+    else:
+        new_matcher = {"tools": [".*"]}
+
     cmds = entry.get("commands")
-    if not isinstance(cmds, list):
-        return False
-    return "cca-roles-hook" in cmds
+    new_hooks = []
+    if isinstance(cmds, list):
+        for c in cmds:
+            if isinstance(c, str) and c:
+                new_hooks.append({"type": "command", "command": c})
+    else:
+        new_hooks.append({"type": "command", "command": "cca-roles-hook"})
 
-if not any(has_hook(e) for e in pre):
+    return {"matcher": new_matcher, "hooks": new_hooks}
+
+# 1) If legacy entries exist, migrate them (preserve other commands in that entry).
+migrated = []
+changed = False
+for e in pre:
+    if isinstance(e, dict) and "commands" in e:
+        migrated.append(migrate_old_entry(e))
+        changed = True
+    else:
+        migrated.append(e)
+pre[:] = migrated
+
+# 2) Ensure CCA hook exists in new format (idempotent).
+if not any(is_new_format_hook(e) for e in pre if isinstance(e, dict)):
     pre.append(hook_obj)
+    changed = True
 
-settings_path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+if changed or not settings_path.exists():
+    settings_path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 PY
 
     local code=$?
