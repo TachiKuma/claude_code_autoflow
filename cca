@@ -975,6 +975,15 @@ def delegate_hint(role_value: str) -> str:
         return 'gask "task"'
     return 'cask "task"'
 
+def executor_rule(executor_value: str) -> str:
+    v = (executor_value or "").strip()
+    v_lower = v.lower()
+    if delegate_hint(v) == "direct":
+        return "can execute directly"
+    if "+opencode" in v_lower:
+        return f"{v} → MUST use cask (Codex will delegate to OpenCode via oask)"
+    return "use " + delegate_hint(v)
+
 roles = read_roles()
 executor = str(roles.get("executor", DEFAULT["executor"]))
 searcher = str(roles.get("searcher", DEFAULT["searcher"]))
@@ -990,7 +999,7 @@ lines.append(f"- searcher: {searcher} ({'direct' if delegate_hint(searcher)=='di
 lines.append(f"- git_manager: {git_manager} ({'direct' if delegate_hint(git_manager)=='direct' else 'delegate'})")
 lines.append("")
 lines.append("### Delegation Rules")
-lines.append(f"- executor: {('can execute directly' if delegate_hint(executor)=='direct' else 'use ' + delegate_hint(executor))}")
+lines.append(f"- executor: {executor_rule(executor)}")
 lines.append(f"- searcher: {('can search directly' if delegate_hint(searcher)=='direct' else 'use ' + delegate_hint(searcher))}")
 lines.append(f"- git_manager: {('can run git changes directly' if delegate_hint(git_manager)=='direct' else 'use ' + delegate_hint(git_manager))}")
 lines.append("")
