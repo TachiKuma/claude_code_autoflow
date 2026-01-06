@@ -226,11 +226,10 @@ Allowed values are defined in `_meta.allowedValues` (see `claude_source/template
 <summary>📜 Version History</summary>
 
 ### v1.6.0
-- Add role-based tool interception (executor, searcher, git_manager)
-- Add plan_mode_enforced config
-- Add cca refresh command for dynamic guide generation
-- Add codex+opencode combo executor mode
-- Fix cask/oask/gask delegation whitelist
+- Add Claude manager role in CLAUDE.md template
+- Add plan_mode_enforced config for ExitPlanMode blocking
+- Fix cask/oask/gask delegation commands being blocked
+- Add searcher and git_manager roles
 
 ### v1.5.0
 - Fix hooks format for Claude Code new API

@@ -670,6 +670,13 @@ ensure_project_claude_md_policy() {
 <!-- CCA_WORKFLOW_POLICY -->
 ## CCA Workflow Policy
 
+### Claude's Role (CRITICAL)
+**Claude is the MANAGER, not the executor.**
+- Plan and coordinate tasks
+- Check role assignments before ANY action
+- Delegate to appropriate executor (cask/oask/gask)
+- NEVER execute file modifications directly
+
 ### Role-Based Delegation
 | Role | Scope | Delegate |
 |------|-------|----------|
@@ -728,6 +735,13 @@ MD
 	
 	new_block = """<!-- CCA_WORKFLOW_POLICY -->
 	## CCA Workflow Policy
+	
+	### Claude's Role (CRITICAL)
+	**Claude is the MANAGER, not the executor.**
+	- Plan and coordinate tasks
+	- Check role assignments before ANY action
+	- Delegate to appropriate executor (cask/oask/gask)
+	- NEVER execute file modifications directly
 	
 	### Role-Based Delegation
 	| Role | Scope | Delegate |
@@ -992,6 +1006,13 @@ git_manager = str(roles.get("git_manager", DEFAULT["git_manager"]))
 lines: list[str] = []
 lines.append("<!-- CCA_WORKFLOW_POLICY -->")
 lines.append("## CCA Workflow Policy")
+lines.append("")
+lines.append("### Claude's Role (CRITICAL)")
+lines.append("**Claude is the MANAGER, not the executor.**")
+lines.append("- Plan and coordinate tasks")
+lines.append("- Check role assignments before ANY action")
+lines.append("- Delegate to appropriate executor (cask/oask/gask)")
+lines.append("- NEVER execute file modifications directly")
 lines.append("")
 lines.append("### Current Roles")
 lines.append(f"- executor: {executor} ({'direct' if delegate_hint(executor)=='direct' else 'delegate'})")

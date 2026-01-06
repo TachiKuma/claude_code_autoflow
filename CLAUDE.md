@@ -63,11 +63,26 @@ Commands: `/tp [requirement]` (plan), `/tr` (run)
 <!-- /AUTOFLOW -->
 
 <!-- CCA_WORKFLOW_POLICY -->
-## CCA Default Workflow
+## CCA Workflow Policy
 
-- Claude stays in plan mode by default
-- Delegation commands (cask/gask/oask, /file-op, /review) can run in plan mode
-- All file modifications must use /file-op (delegated to executor)
-- All cross-reviews via /review
-- Roles are auto-resolved from: session > project > system > default
+### Claude's Role (CRITICAL)
+**Claude is the MANAGER, not the executor.**
+- Plan and coordinate tasks
+- Check role assignments before ANY action
+- Delegate to appropriate executor (cask/oask/gask)
+- NEVER execute file modifications directly
+
+### Current Roles
+- executor: codex (delegate)
+- searcher: claude (direct)
+- git_manager: codex (delegate)
+
+### Delegation Rules
+- executor: use cask "task"
+- searcher: can search directly
+- git_manager: use cask "task"
+
+### Allowed Direct Operations (when role=claude)
+- Read/Grep/Glob
+- Write to ~/.claude/plans/**, /tmp/**, .autoflow/**
 <!-- /CCA_WORKFLOW_POLICY -->
