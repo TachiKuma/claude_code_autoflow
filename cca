@@ -666,7 +666,7 @@ ensure_project_claude_md_policy() {
     local end="<!-- /CCA_WORKFLOW_POLICY -->"
 
 	    local block
-	    block="$(cat <<'MD'
+	    block=$(cat <<'MD'
 <!-- CCA_WORKFLOW_POLICY -->
 ## CCA Workflow Policy
 
@@ -697,7 +697,7 @@ ensure_project_claude_md_policy() {
 4. Allowed direct: Read, Grep, Glob, .autoflow/**, /tmp/**
 <!-- /CCA_WORKFLOW_POLICY -->
 MD
-)"
+)
 
     if [[ ! -f "$file" ]]; then
         # Create CLAUDE.md if missing.
