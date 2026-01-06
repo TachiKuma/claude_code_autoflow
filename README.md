@@ -15,7 +15,7 @@
   <img src="https://img.shields.io/badge/Automated_Collaboration-CF1322?style=for-the-badge" alt="Automated Collaboration">
 </p>
 
-![Version](https://img.shields.io/badge/version-1.6.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.7.0-blue.svg)
 ![License](https://img.shields.io/badge/license-AGPL--3.0-green.svg)
 ![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows%20%7C%20WSL-lightgrey.svg)
 
@@ -238,6 +238,10 @@ Allowed values are defined in `_meta.allowedValues` (see `claude_source/template
 
 <details>
 <summary>📜 Version History</summary>
+
+### v1.7.0
+- Change default searcher role from claude to codex
+- Add 'For Simple Tasks' quick setup guide in README
 
 ### v1.6.0
 - Add Claude manager role in CLAUDE.md template
