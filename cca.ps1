@@ -1,5 +1,16 @@
 #Requires -Version 5.1
 
+# UTF-8 encoding initialization (PowerShell 5.1 compatibility)
+# Keep this near the top so Chinese/emoji output is rendered correctly.
+try {
+  $script:utf8NoBom = [System.Text.UTF8Encoding]::new($false)
+} catch {
+  $script:utf8NoBom = [System.Text.Encoding]::UTF8
+}
+try { $OutputEncoding = $script:utf8NoBom } catch {}
+try { [Console]::OutputEncoding = $script:utf8NoBom } catch {}
+try { [Console]::InputEncoding = $script:utf8NoBom } catch {}
+try { chcp 65001 | Out-Null } catch {}
 $ErrorActionPreference = 'Stop'
 
 # cca - Claude Code AutoFlow CLI (PowerShell)
@@ -780,7 +791,10 @@ function Cmd-List {
         $t = if ($r.Type) { $r.Type } else { 'project' }
         $d = if ($r.InstallDate) { $r.InstallDate } else { '' }
         $ok = Test-CodexProjectConfigured -TargetPath $p
-        $status = if ($ok) { '✓' } else { '✗' }
+        # 使用字符代码而非直接写 Unicode（解析安全）
+        $checkMark = [char]0x2713  # ✓
+        $crossMark = [char]0x2717  # ✗
+        $status = if ($ok) { $checkMark } else { $crossMark }
         $color = if ($ok) { 'Green' } else { 'Red' }
         $line = ('  {0,-50} {1,-10} {2} ' -f $p, $t, $d)
         Write-Host $line -NoNewline
