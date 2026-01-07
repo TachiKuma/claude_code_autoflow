@@ -1072,15 +1072,15 @@ p=Path(sys.argv[1])
 try:
     obj=json.loads(p.read_text(encoding="utf-8"))
     if isinstance(obj, dict):
-        print(obj.get("executor",""))
+        print(obj.get("executor","").lower())
 except Exception:
     pass
 PY
 )"
-        if [[ "${executor,,}" == *"opencode"* ]]; then
-            log_info "Refreshed: $target/AGENTS.md"
-        fi
-    fi
+	    if [[ "$executor" == *"opencode"* ]]; then
+	        log_info "Refreshed: $target/AGENTS.md"
+	    fi
+	fi
 }
 
 # Command: delete
