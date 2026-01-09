@@ -43,15 +43,7 @@ DEFAULT_ROLES: dict[str, Any] = {
 
 
 def _find_repo_root(start: Path) -> Path:
-    cur = start.resolve()
-    for p in [cur, *cur.parents]:
-        if (p / ".autoflow").is_dir():
-            return p
-        if (p / ".claude").is_dir():
-            return p
-        if (p / ".git").is_dir():
-            return p
-    return cur
+    return start.resolve()
 
 
 def _config_home() -> Path:
@@ -84,7 +76,6 @@ def _candidates(repo_root: Path) -> list[tuple[Path, str]]:
     return [
         (repo_root / ".autoflow" / "roles.session.json", "session"),
         (repo_root / ".autoflow" / "roles.json", "project"),
-        (_config_home() / "cca" / "roles.json", "system"),
     ]
 
 

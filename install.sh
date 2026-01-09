@@ -176,66 +176,7 @@ install_bin_links() {
   fi
 }
 
-install_global_skills() {
-  local target="$HOME/.claude"
-  mkdir -p "$target/skills" "$target/commands"
-
-  for skill in tr tp dual-design file-op ask-codex ask-gemini roles review mode-switch docs; do
-    rm -rf "$target/skills/$skill" 2>/dev/null || true
-    cp -a "$INSTALL_PREFIX/claude_source/skills/$skill" "$target/skills/"
-  done
-
-  for cmd in tr.md tp.md dual-design.md file-op.md ask-codex.md ask-gemini.md roles.md review.md mode-switch.md; do
-    cp -a "$INSTALL_PREFIX/claude_source/commands/$cmd" "$target/commands/"
-  done
-
-  log_info "Installed skills/commands to ~/.claude/ (globally visible)"
-}
-
-remove_global_skills() {
-  local target="$HOME/.claude"
-  local skills_dir="$target/skills"
-  local commands_dir="$target/commands"
-
-  for skill in tr tp dual-design file-op ask-codex ask-gemini roles review mode-switch docs; do
-    rm -rf "$skills_dir/$skill" 2>/dev/null || true
-  done
-
-  local owned="$commands_dir/.cca-owned"
-  if [[ -f "$owned" ]]; then
-    while IFS= read -r name; do
-      [[ -z "${name//[[:space:]]/}" ]] && continue
-      rm -f "$commands_dir/$name" 2>/dev/null || true
-    done < "$owned"
-    rm -f "$owned" 2>/dev/null || true
-  else
-    for f in "$commands_dir"/*.md; do
-      [[ -f "$f" ]] || continue
-      if grep -qF '~/.claude/skills/' "$f" 2>/dev/null; then
-        if grep -Eq '~/.claude/skills/(tr|tp|dual-design|file-op|ask-codex|ask-gemini|roles|review|mode-switch|docs)/' "$f" 2>/dev/null; then
-          rm -f "$f" 2>/dev/null || true
-        fi
-      fi
-    done
-  fi
-}
-
-remove_system_roles_config() {
-  local cca_home="${XDG_CONFIG_HOME:-$HOME/.config}/cca"
-  local roles_cfg="$cca_home/roles.json"
-  [[ -f "$roles_cfg" ]] || return 0
-
-  mkdir -p "$cca_home/backup" 2>/dev/null || true
-  local ts
-  ts="$(date +%Y%m%d%H%M%S 2>/dev/null || echo now)"
-  if mv -f "$roles_cfg" "$cca_home/backup/roles.json.$ts" 2>/dev/null; then
-    log_info "Removed system roles config (backed up): $cca_home/backup/roles.json.$ts"
-  else
-    rm -f "$roles_cfg" 2>/dev/null || true
-    log_info "Removed system roles config: $roles_cfg"
-  fi
-}
-
+# NOTE: AutoFlow skills/commands are installed per-project by `cca add`.
 ensure_path_configured() {
   if [[ ":$PATH:" == *":$BIN_DIR:"* ]]; then
     return
@@ -282,9 +223,6 @@ cmd_install() {
   copy_project
   inject_version_info
   install_bin_links
-  remove_global_skills
-  remove_system_roles_config
-  log_warn "Cleaned legacy system AutoFlow config. In your repo: run 'cca add .', edit '.autoflow/roles.json' (if needed), then run 'cca refresh'."
   ensure_path_configured
   log_info "Installation complete"
 }
