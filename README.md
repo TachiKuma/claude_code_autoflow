@@ -131,8 +131,8 @@ cca list               # Show all configured projects
 
 #### Maintenance
 ```bash
-cca update             # Update cca and refresh ~/.claude/ skills
-cca update --local     # Refresh ~/.claude/ from local CCA_SOURCE
+cca update             # Update cca and refresh configured projects
+cca update --local     # Refresh configured projects from local CCA_SOURCE
 cca uninstall          # Remove cca from system
 cca version            # Show version and commit info
 cca help               # Show help

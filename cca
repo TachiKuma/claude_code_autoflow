@@ -64,7 +64,7 @@ Commands:
   delete .       Remove Codex permissions config for current project
   delete <path>  Remove Codex permissions config for a project
 
-  update [--local] [--no-reexec]  Update cca and refresh ~/.claude/
+  update [--local] [--no-reexec]  Update cca and refresh projects
   list           Show configured projects
   uninstall      Remove cca from system
 
@@ -75,8 +75,8 @@ Examples:
   cca add .                  # Configure current project
   cca add ~/myproject        # Configure a project
   cca delete .               # Remove config from current project
-  cca update                 # Update cca and refresh ~/.claude/
-  cca update --local         # Refresh ~/.claude/ from current CCA_SOURCE
+  cca update                 # Update cca and refresh configured projects
+  cca update --local         # Refresh configured projects from current CCA_SOURCE
   cca update --no-reexec     # Do not re-exec into the updated cca
 
 Config:
@@ -377,7 +377,7 @@ remove_installation() {
     mv "$tmp" "$INSTALLATIONS_FILE"
 }
 
-# Check source files exist (for refreshing ~/.claude/)
+# Check source files exist (for project-local install)
 check_source_dir() {
     local source_root="${1:-$CCA_SOURCE}"
     if [[ ! -d "$source_root/claude_source/skills" ]]; then
@@ -443,6 +443,37 @@ install_global_skills() {
     log_info "Installed skills/commands to ~/.claude/ (globally visible)"
 }
 
+remove_global_skills() {
+    local target="$HOME/.claude"
+    local skills_dir="$target/skills"
+    local commands_dir="$target/commands"
+
+    # Skills
+    for skill in "${AUTOFLOW_SKILLS[@]}"; do
+        rm -rf "$skills_dir/$skill" 2>/dev/null || true
+    done
+
+    # Commands
+    local owned="$commands_dir/.cca-owned"
+    if [[ -f "$owned" ]]; then
+        while IFS= read -r name; do
+            [[ -z "${name//[[:space:]]/}" ]] && continue
+            rm -f "$commands_dir/$name" 2>/dev/null || true
+        done < "$owned"
+        rm -f "$owned" 2>/dev/null || true
+    else
+        # Best-effort cleanup for older installs (no ownership marker).
+        for f in "$commands_dir"/*.md; do
+            [[ -f "$f" ]] || continue
+            if grep -qF '~/.claude/skills/' "$f" 2>/dev/null; then
+                if grep -Eq '~/.claude/skills/(tr|tp|dual-design|file-op|ask-codex|ask-gemini|roles|review|mode-switch|docs)/' "$f" 2>/dev/null; then
+                    rm -f "$f" 2>/dev/null || true
+                fi
+            fi
+        done
+    fi
+}
+
 ensure_system_roles_config() {
     local roles_cfg="$CCA_HOME/roles.json"
     if [[ -f "$roles_cfg" ]]; then
@@ -459,6 +490,24 @@ ensure_system_roles_config() {
 }
 JSON
     log_info "Created system roles config: $roles_cfg"
+}
+
+remove_system_roles_config() {
+    local roles_cfg="$CCA_HOME/roles.json"
+    if [[ ! -f "$roles_cfg" ]]; then
+        return 0
+    fi
+
+    local backup_dir="$CCA_HOME/backup"
+    mkdir -p "$backup_dir" 2>/dev/null || true
+    local ts
+    ts="$(date +%Y%m%d%H%M%S 2>/dev/null || echo now)"
+    if mv -f "$roles_cfg" "$backup_dir/roles.json.$ts" 2>/dev/null; then
+        log_info "Removed system roles config (backed up): $backup_dir/roles.json.$ts"
+    else
+        rm -f "$roles_cfg" 2>/dev/null || true
+        log_info "Removed system roles config: $roles_cfg"
+    fi
 }
 
 ensure_project_roles_config() {
@@ -483,6 +532,61 @@ ensure_project_roles_config() {
     else
         log_warn "Roles template not found (skipping): $template"
     fi
+}
+
+ensure_project_skills() {
+    local project_root="$1"
+    local source_root="${2:-$CCA_SOURCE}"
+
+    local src_skills="$source_root/claude_source/skills"
+    local src_commands="$source_root/claude_source/commands"
+    if [[ ! -d "$src_skills" || ! -d "$src_commands" ]]; then
+        log_warn "Skills/commands source not found (skipping project install): $source_root/claude_source/"
+        return 0
+    fi
+
+    local claude_dir="$project_root/.claude"
+    local skills_dir="$claude_dir/skills"
+    local commands_dir="$claude_dir/commands"
+
+    mkdir -p "$skills_dir" "$commands_dir" 2>/dev/null || true
+    if [[ ! -d "$claude_dir" || ! -w "$claude_dir" ]]; then
+        log_warn "Project .claude/ not writable (skipping skills install): $claude_dir"
+        return 0
+    fi
+
+    for skill in "${AUTOFLOW_SKILLS[@]}"; do
+        if [[ -d "$src_skills/$skill" ]]; then
+            rm -rf "$skills_dir/$skill" 2>/dev/null || true
+            cp -a "$src_skills/$skill" "$skills_dir/" 2>/dev/null || true
+        fi
+    done
+
+    local owned="$commands_dir/.cca-owned"
+    if [[ -f "$owned" ]]; then
+        while IFS= read -r name; do
+            [[ -z "${name//[[:space:]]/}" ]] && continue
+            rm -f "$commands_dir/$name" 2>/dev/null || true
+        done < "$owned"
+    fi
+
+    : > "$owned" 2>/dev/null || true
+    for cmd in "${AUTOFLOW_COMMANDS[@]}"; do
+        if [[ -f "$src_commands/$cmd" ]]; then
+            cp -a "$src_commands/$cmd" "$commands_dir/" 2>/dev/null || true
+            printf "%s\n" "$cmd" >> "$owned" 2>/dev/null || true
+        fi
+    done
+
+    # Convert global skill paths to project-local paths.
+    while IFS= read -r f; do
+        [[ -f "$f" ]] || continue
+        if grep -qF '~/.claude/skills/' "$f" 2>/dev/null; then
+            sed_inplace 's#~/.claude/skills/#.claude/skills/#g' "$f"
+        fi
+    done < <(find "$claude_dir" -type f \( -name '*.md' -o -name '*.json' -o -name '*.sh' -o -name '*.py' \) -print 2>/dev/null || true)
+
+    log_info "Installed project skills/commands: $claude_dir"
 }
 
 ensure_hook_installed() {
@@ -1129,17 +1233,17 @@ cmd_add() {
     fi
 
     case "$target" in
-        ".")
-            target="$(pwd)"
-            log_blue "Configuring current project: $target"
-            do_install "$target" "project"
-            ensure_system_roles_config || true
-            ensure_project_roles_config "$target" || true
-            ensure_hook_installed || true
-            ensure_claude_settings_hook "$target" || true
-            ensure_project_claude_md_policy "$target" || true
-            ensure_project_agents_md "$target" || true
-            ;;
+	        ".")
+	            target="$(pwd)"
+	            log_blue "Configuring current project: $target"
+	            do_install "$target" "project"
+	            ensure_project_roles_config "$target" || true
+	            ensure_project_skills "$target" "$CCA_SOURCE" || true
+	            ensure_hook_installed || true
+	            ensure_claude_settings_hook "$target" || true
+	            ensure_project_claude_md_policy "$target" || true
+	            ensure_project_agents_md "$target" || true
+	            ;;
         *)
             # Resolve path
             if [[ "$target" != /* ]]; then
@@ -1148,20 +1252,20 @@ cmd_add() {
             target="$(cd "$target" 2>/dev/null && pwd)" || {
                 log_error "Directory not found: $target"
                 exit 1
-            }
-            log_blue "Configuring: $target"
-            do_install "$target" "project"
-            ensure_system_roles_config || true
-            ensure_project_roles_config "$target" || true
-            ensure_hook_installed || true
-            ensure_claude_settings_hook "$target" || true
-            ensure_project_claude_md_policy "$target" || true
-            ensure_project_agents_md "$target" || true
-            ;;
-    esac
+	            }
+	            log_blue "Configuring: $target"
+	            do_install "$target" "project"
+	            ensure_project_roles_config "$target" || true
+	            ensure_project_skills "$target" "$CCA_SOURCE" || true
+	            ensure_hook_installed || true
+	            ensure_claude_settings_hook "$target" || true
+	            ensure_project_claude_md_policy "$target" || true
+	            ensure_project_agents_md "$target" || true
+	            ;;
+	    esac
 
-    echo ""
-    log_info "Done! AutoFlow is available globally in ~/.claude/ (run ./install.sh install if needed)."
+	    echo ""
+	    log_info "Done! AutoFlow is installed in this project (.claude/, .autoflow/)."
 }
 
 # Command: refresh
@@ -1401,7 +1505,7 @@ cmd_update() {
 
     if [[ "$mode" == "--local" ]]; then
         source_root="$CCA_SOURCE"
-        log_blue "Refreshing ~/.claude/ from local source: $source_root"
+        log_blue "Refreshing configured projects from local source: $source_root"
     else
         local install_dir
         if ! install_dir="$(system_install_dir)"; then
@@ -1508,8 +1612,9 @@ cmd_update() {
         fi
     fi
 
-    # Refresh globally visible skills/commands in ~/.claude/
-    install_global_skills "$source_root"
+    # Cleanup legacy global install artifacts (skills/commands + system roles).
+    remove_global_skills || true
+    remove_system_roles_config || true
 
     local -a _install_lines=()
     while IFS= read -r line || [[ -n "$line" ]]; do
