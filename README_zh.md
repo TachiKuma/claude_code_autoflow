@@ -15,7 +15,7 @@
   <img src="https://img.shields.io/badge/Automated_Collaboration-CF1322?style=for-the-badge" alt="Automated Collaboration">
 </p>
 
-![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.8.0-blue.svg)
 ![License](https://img.shields.io/badge/license-AGPL--3.0-green.svg)
 ![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows%20%7C%20WSL-lightgrey.svg)
 
@@ -25,7 +25,10 @@
 
 ---
 
-**Claude Code AutoFlow (cca)** 是一个专为 AI 辅助开发设计的结构化任务自动化工作流系统。它利用标准通信协议，使 Claude 能够自主、安全地规划 (`/tp`) 和执行 (`/tr`) 复杂任务。
+**Claude Code AutoFlow (cca)** 是一个专为 AI 辅助开发设计的结构化任务自动化工作流系统。
+功能1：通过角色设置，无感体验，不需要记忆任何命令和指令，和直接使用claude没有任何不同，后台hook 和 skill会自动帮你根据角色安排任务，显著降低cc的上下文和花费。
+功能2：针对复杂任务：/auto + 任务，自动制定任务计划， /auto run 自动完成后续所有过程推进 （核心原理：通过cc负责宏观，cx负责微观进行任务分解和分步展开，自动清理步间上下文，并根据token消耗做substep的进一步展开。 让复杂任务得心应手）
+
 
 ## 🔗 依赖链
 
@@ -37,28 +40,24 @@ WezTerm  →  ccb (Claude Code Bridge)  →  cca (Claude Code AutoFlow)
 
 - **WezTerm**: 终端模拟器基础。
 - **ccb**: 连接终端与 AI 上下文的桥梁。
-- **cca**: 高级任务自动化工作流引擎。
+- **cca**: 角色管理和任务自动化工作流引擎。
 
 ## ✨ 核心功能
 
 | 功能 | 命令 | 说明 |
 | :--- | :--- | :--- |
-| **任务规划** | `/tp [需求]` | 生成结构化计划并初始化状态机。 |
-| **任务执行** | `/tr` | 执行当前步骤，包含双重设计 (Dual-Design) 验证。 |
+| **任务规划** | `/auto [需求]` | 生成结构化计划并初始化状态机。 |
+| **任务执行** | `/auto run` | 执行当前步骤，包含双重设计 (Dual-Design) 验证。 |
 | **自动化** | `autoloop` | 后台守护进程，实现持续的上下文感知执行。 |
 | **状态管理** | SSOT | 使用 `state.json` 作为任务状态的唯一数据源。 |
 
 ## 🎭 角色配置（适用于所有任务）
 
-CCA 支持为不同阶段分配不同模型角色。该路由不仅适用于 AutoFlow 工作流（`/tp`、`/tr`），也适用于日常的轻量任务：Claude 常驻计划模式，通过技能委派（例如 `/file-op`、`/review`、`/roles`）让不同执行者完成工作。
+CCA 支持为不同工作分配不同模型角色。
 
-### 配置位置与优先级
+### 配置位置分离
 
-- **会话级**（最高优先级）：`<project_root>/.autoflow/roles.session.json`
-- **项目级**：`<project_root>/.autoflow/roles.json`
-- **系统级**：`~/.config/cca/roles.json`
-
-优先级：会话级 > 项目级 > 系统级 > 默认值。
+- **项目独立的角色设置**：`<project_root>/.autoflow/roles.json`
 
 ### 支持的角色字段
 
@@ -67,16 +66,10 @@ CCA 支持为不同阶段分配不同模型角色。该路由不仅适用于 Aut
 - **documenter**：生成文档（例如 `codex`、`gemini`）
 - **designer**：参与双重设计（例如 `["claude", "codex"]`）
 
-### /roles（轻量管理）
+### 链式角色管理
 
-无需启动完整 `/tp`/`/tr`，可直接用 `/roles` 管理角色：
+当 exexutor 为 codex+opencode时，claude会将任务下发给codex  codex形成详细计划，然后codex将直接调用opencode执行并审查迭代，最终将结果返回cc。让牛马发挥它应有的廉价快速可控特色。
 
-```bash
-/roles show
-/roles set executor=opencode reviewer=gemini
-/roles clear
-/roles init
-```
 
 ### 示例配置
 
@@ -106,8 +99,9 @@ cd claude_code_bridge
 
 ### 3. 安装 cca (AutoFlow)
 ```bash
-git clone https://github.com/bfly123/claude-autoflow.git
-cd claude-autoflow
+直接使用ccb update cca即可 或者：
+git clone https://github.com/bfly123/claude_code_autoflow.git
+cd claude_code_autoflow
 ./install.sh install
 ```
 
@@ -119,17 +113,9 @@ cd claude-autoflow
 | 命令 | 说明 |
 | :--- | :--- |
 | `cca add .` | 为当前目录配置 Codex 自动化权限。 |
-| `cca add /path` | 为指定项目路径配置自动化权限。 |
 | `cca update` | 更新 `cca` 核心组件及全局 Skills 定义。 |
+| `cca refresh` | 当修改角色后 需要refresh一下提示词工程 |
 | `cca version` | 显示版本信息。 |
-
-### Slash Skills (会话内)
-在 Claude 会话中，使用以下 Skills 驱动工作流：
-
-- **`/tp [任务说明]`** - 创建任务计划。
-  - 示例：`/tp 实现用户登录功能`
-- **`/tr`** - 启动自动执行。
-  - 不需要参数。
 
 ## 📄 许可协议
 
@@ -139,6 +125,45 @@ cd claude-autoflow
 
 <details>
 <summary>📜 版本历史</summary>
+
+### v1.8.0
+- 架构重构：install.sh 仅安装 cca 命令（不再修改全局 ~/.claude/）
+- 配置现仅为项目本地（不再继承父目录）
+- cca update：自动检测并将旧版全局配置迁移至项目本地
+- cca remove：带确认的交互式清理
+- cca-roles-hook：移除配置查找的父目录遍历
+
+### v1.7.1
+- 通过 `cca add` 使 AutoFlow skills/commands 成为项目本地配置（`<repo>/.claude/`）
+- 重构 `install.sh`/`cca update`：不再全局安装 `~/.claude` skills
+- 重构 `cca delete`：交互式清理项目 `.claude` + hooks + 策略块
+
+### v1.7.0
+- 将默认 searcher 角色从 claude 改为 codex
+- 在 README 中添加“简单任务”快速设置指南
+
+### v1.6.0
+- 在 CLAUDE.md 模板中添加 Claude manager 角色
+- 添加 plan_mode_enforced 配置用于阻止 ExitPlanMode
+- 修复 cask/oask/gask 委托命令被阻止的问题
+- 添加 searcher 和 git_manager 角色
+
+### v1.5.0
+- 修复 Claude Code 新 API 的 hooks 格式
+- 移除废弃代码
+
+### v1.4.0
+- 修复 cca update：git pull 后同步 bin 工具
+- 修复 cca update：刷新项目配置 (settings.json, CLAUDE.md)
+- 修复 commands 同步：使用 .cca-owned 清单镜像 commands
+- 添加 cca add：自动注入 CLAUDE.md 工作流策略
+
+### v1.3.0
+- 添加角色硬约束：Codex 从配置文件自行解析角色
+- 添加 cca-roles-hook (Python)：带配置签名标记的结构化输出
+- 添加 /file-op 执行者路由：codex (直接) 或 opencode (经由 oask)
+- 更新 CLAUDE.md 包含默认工作流规则
+- 添加综合测试套件 (11 个测试用例)
 
 ### v1.2.0
 - 添加中英文 SLOGAN 和语言切换

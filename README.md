@@ -27,6 +27,10 @@
 
 **Claude Code AutoFlow (cca)** is a structured task automation workflow system designed for AI-assisted development. It enables Claude to plan and execute complex tasks autonomously with dual-design validation.
 
+Two core capabilities:
+- **Seamless role-based routing**: Configure roles once, and hooks/skills automatically route work to the right executor in the background (no extra commands to remember), reducing context usage and cost.
+- **End-to-end automation for complex tasks**: Use `/auto <task>` to generate a plan, then `/auto run` to drive the remaining steps automatically.
+
 ## 🔗 Dependency Chain
 
 ```
@@ -218,6 +222,12 @@ Allowed values are defined in `_meta.allowedValues` (see `claude_source/template
 - `searcher`: `claude`, `codex`, `gemini`, `opencode`
 - `git_manager`: `claude`, `codex`, `opencode`, `gemini`
 - `plan_mode_enforced`: `true`/`false` (default: false) - Block ExitPlanMode when true
+
+### Chained Executor Mode (`codex+opencode`)
+When `executor` is set to `codex+opencode`:
+1. Claude delegates execution to Codex via `cask`.
+2. Codex refines the task and delegates file changes to OpenCode via `oask`.
+3. Codex reviews/iterates on OpenCode results and returns a consolidated outcome back to Claude.
 
 ### Example
 ```json
