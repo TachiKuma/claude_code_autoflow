@@ -1856,30 +1856,66 @@ cmd_list() {
 
 # Command: uninstall
 cmd_uninstall() {
-    log_warn "This will remove cca from your system."
-    echo ""
-    read -p "Remove all configured project entries from Codex config too? [y/N] " -n 1 -r
+    log_warn "This will uninstall cca and clean all configured projects."
     echo ""
 
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        # Remove all configured projects (best effort).
-        local -a _install_lines=()
-        while IFS= read -r line || [[ -n "$line" ]]; do
-            _install_lines+=("$line")
-        done < "$INSTALLATIONS_FILE" 2>/dev/null || true
-        for line in "${_install_lines[@]+"${_install_lines[@]}"}"; do
-            [[ -z "${line//[[:space:]]/}" ]] && continue
-            IFS='|' read -r path type date <<< "$line"
-            [[ -z "${path:-}" ]] && continue
-            do_remove "$path" || true
-        done
+    local proceed="y"
+    local purge_autoflow="n"
+
+    if [[ -t 0 ]]; then
+        read -r -p "Proceed with uninstall + project cleanup? [Y/n] " proceed || proceed="y"
+        echo ""
+        read -r -p "Also delete each project's .autoflow/? (roles/config) [y/N] " purge_autoflow || purge_autoflow="n"
+        echo ""
+    else
+        # Non-interactive mode: default execute uninstall/project cleanup.
+        proceed="y"
+        purge_autoflow="n"
     fi
 
-    # Remove cca binary
-    local cca_path="$(which cca 2>/dev/null)"
-    if [[ -n "$cca_path" ]] && [[ -f "$cca_path" ]]; then
-        rm -f "$cca_path"
-        log_info "Removed: $cca_path"
+    proceed="$(echo "${proceed:-}" | tr '[:upper:]' '[:lower:]')"
+    purge_autoflow="$(echo "${purge_autoflow:-}" | tr '[:upper:]' '[:lower:]')"
+
+    if [[ -n "$proceed" && "$proceed" != "y" && "$proceed" != "yes" ]]; then
+        log_warn "Cancelled."
+        return 0
+    fi
+
+    # Clean all configured projects (best effort).
+    local -a _install_lines=()
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        _install_lines+=("$line")
+    done < "$INSTALLATIONS_FILE" 2>/dev/null || true
+
+    for line in "${_install_lines[@]+"${_install_lines[@]}"}"; do
+        [[ -z "${line//[[:space:]]/}" ]] && continue
+        IFS='|' read -r path type date <<< "$line"
+        [[ -z "${path:-}" ]] && continue
+
+        log_blue "Cleaning project: $path"
+        remove_project_skills "$path" || true
+        remove_project_hook "$path" || true
+        remove_claude_md_policy "$path" || true
+        remove_codex_config "$path" || true
+
+        if [[ "$purge_autoflow" == "y" || "$purge_autoflow" == "yes" ]]; then
+            rm -rf "$path/.autoflow" 2>/dev/null || true
+        fi
+
+        remove_installation "$path"
+    done
+
+    # Cleanup legacy global install artifacts (best effort).
+    cleanup_legacy_global || true
+
+    # Remove binaries from $CCA_BIN_DIR (do not rely on `which`).
+    if [[ -f "$CCA_BIN_DIR/cca" || -L "$CCA_BIN_DIR/cca" ]]; then
+        rm -f "$CCA_BIN_DIR/cca" 2>/dev/null || true
+        log_info "Removed: $CCA_BIN_DIR/cca"
+    fi
+    if [[ -f "$CCA_BIN_DIR/cca-roles-hook" || -L "$CCA_BIN_DIR/cca-roles-hook" ]]; then
+        rm -f "$CCA_BIN_DIR/cca-roles-hook" 2>/dev/null || true
+        log_info "Removed: $CCA_BIN_DIR/cca-roles-hook"
     fi
 
     # Remove system install copy
@@ -1889,8 +1925,10 @@ cmd_uninstall() {
         log_info "Removed: $install_dir"
     fi
 
-    # Remove cca config
-    rm -rf "$CCA_HOME"
+    # Remove cache + config
+    rm -rf "$CCA_CACHE" 2>/dev/null || true
+    log_info "Removed: $CCA_CACHE"
+    rm -rf "$CCA_HOME" 2>/dev/null || true
     log_info "Removed: $CCA_HOME"
 
     echo ""
